@@ -89,6 +89,13 @@ object Main extends App {
     combosWinner(combos)
   }
 
+  object TicTacToeSyntax {
+    implicit class TicTacToeOps[F](f: F) {
+      def info[F[_]: TicTacToe : Monad](p: Position): F[Option[Player]] =
+        implicitly[TicTacToe[F]].info(p)
+    }
+  }
+
   type Board = Map[Position, Player]
   case class GameState(p: Player, b: Board)
 
@@ -165,5 +172,13 @@ object Main extends App {
    * implicit val i = TicTacToe.ThingIsTTT
    * takeIfNotTaken(Position(BoardIndex.F, BoardIndex.F)).run(g).value
    * takeIfNotTaken(Position(BoardIndex.S, BoardIndex.F)).run(res5._1).value
+   */
+
+  /**
+   * Another, maybe using the implicits above? Maybe unnecessary?
+   * imports*
+   * val s = State[GameState, Unit](gs => (gs, ()))
+   *   // how is that different from s2.set(GameState(Player.X, Map.empty)) ?
+   * s.info(Position(BoardIndex.F, BoardIndex.F)).run(GameState(Player.X, Map.empty))
    */
 }
