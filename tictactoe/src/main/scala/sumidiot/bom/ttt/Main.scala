@@ -60,30 +60,6 @@ object Main extends App {
                   (Position(F, T), Position(S, T), Position(T, T)),
                   (Position(F, F), Position(S, S), Position(T, T)),
                   (Position(T, F), Position(S, S), Position(F, T)))
-    /**
-    def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
-      ttt.info(pos1).flatMap { pl1 => pl1 match {
-        case None => mf.pure(None)
-        case Some(pl1) =>
-          ttt.info(pos2).flatMap { pl2 => pl2 match {
-            case None => mf.pure(None)
-            case Some(pl2) =>
-              ttt.info(pos3).flatMap { pl3 => pl3 match {
-                case None => mf.pure(None)
-                case Some(pl3) =>
-                  if (pl1 == pl2 && pl2 == pl3) {
-                    mf.pure(Some(pl1))
-                  } else {
-                    mf.pure(None)
-                  }
-              }
-              }
-          }
-          }
-      }
-      }
-    }
-    **/
     def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
       for {
         pl1 <- ttt.info(pos1)
@@ -119,7 +95,7 @@ object Main extends App {
   object TicTacToe {
     import cats.data.State
     type SGS[X] = State[GameState, X]
-    class ThingIsTTT extends TicTacToe[SGS] {
+    implicit case object ThingIsTTT extends TicTacToe[SGS] {
       def info(p: Position): State[GameState, Option[Player]] = {
         State(game => {
           (game, game.b.get(p))
@@ -181,4 +157,13 @@ object Main extends App {
       }
     }
   }
+
+  /**
+   * Example usage:
+   * import sumidiot.bom.ttt.Main._
+   * val g = GameState(Player.O, Map.empty)
+   * implicit val i = TicTacToe.ThingIsTTT
+   * takeIfNotTaken(Position(BoardIndex.F, BoardIndex.F)).run(g).value
+   * takeIfNotTaken(Position(BoardIndex.S, BoardIndex.F)).run(res5._1).value
+   */
 }
