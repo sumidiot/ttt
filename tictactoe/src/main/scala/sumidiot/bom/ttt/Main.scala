@@ -47,10 +47,10 @@ object Main extends App {
     }
   }
 
-  def winner[F[_]: TicTacToe, Monad]: F[Option[Player]] = {
+  def winner[F[_]: TicTacToe : Monad]: F[Option[Player]] = {
     val ttt = implicitly[TicTacToe[F]]
     val mf  = implicitly[Monad[F]]
-    import Position._
+    import BoardIndex._
     val combos = List(
                   (Position(F, F), Position(F, S), Position(F, T)),
                   (Position(S, F), Position(S, S), Position(S, T)),
@@ -60,20 +60,21 @@ object Main extends App {
                   (Position(F, T), Position(S, T), Position(T, T)),
                   (Position(F, F), Position(S, S), Position(T, T)),
                   (Position(T, F), Position(S, S), Position(F, T)))
+    /**
     def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
-      ttt.info(pos1).flatMap { pl1 match {
-        case None => None.pure
+      ttt.info(pos1).flatMap { pl1 => pl1 match {
+        case None => mf.pure(None)
         case Some(pl1) =>
-          ttt.info(pos2).flatMap { pl2 match {
-            case None => None.pure
+          ttt.info(pos2).flatMap { pl2 => pl2 match {
+            case None => mf.pure(None)
             case Some(pl2) =>
-              ttt.info(pos3).flatMap { pl3 match {
-                case None => None.pure
+              ttt.info(pos3).flatMap { pl3 => pl3 match {
+                case None => mf.pure(None)
                 case Some(pl3) =>
                   if (pl1 == pl2 && pl2 == pl3) {
-                    Some(pl1).pure
+                    mf.pure(Some(pl1))
                   } else {
-                    None.pure
+                    mf.pure(None)
                   }
               }
               }
@@ -81,6 +82,22 @@ object Main extends App {
           }
       }
       }
+    }
+    **/
+    def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
+      for {
+        pl1 <- ttt.info(pos1)
+        pl2 <- ttt.info(pos2)
+        pl3 <- ttt.info(pos3)
+      } yield {
+        for {
+          pl1_ <- pl1
+          pl2_ <- pl2
+          pl3_ <- pl3 if pl1_ == pl2_ && pl2_ == pl3_
+        } yield {
+          pl3_
+        }
+      }   
     }
     def combosWinner(cs: List[(Position, Position, Position)]): F[Option[Player]] =
       cs match {
@@ -128,10 +145,40 @@ object Main extends App {
         })
       }
 
-      def winner(b: Board): Option[Player] =
+      def winner(b: Board): Option[Player] = {
+        /**
+         * Well, this is entertaining. I need `winner` to be defined to define
+         * `take`, so that I can show I'm a TicTacToe, after which point I can
+         * use the more generic `winner`. Clearly I've done something wrong.
+         */
+        import BoardIndex._
+        val combos = List(
+                  (Position(F, F), Position(F, S), Position(F, T)),
+                  (Position(S, F), Position(S, S), Position(S, T)),
+                  (Position(T, F), Position(T, S), Position(T, T)),
+                  (Position(F, F), Position(S, F), Position(T, F)),
+                  (Position(F, S), Position(S, S), Position(T, S)),
+                  (Position(F, T), Position(S, T), Position(T, T)),
+                  (Position(F, F), Position(S, S), Position(T, T)),
+                  (Position(T, F), Position(S, S), Position(F, T)))
 
-        ???
+        def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
+          for {
+            pl1 <- b.get(pos1)
+            pl2 <- b.get(pos2)
+            pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
+          } yield {
+            pl3
+          }   
+        }
+        def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
+          cs match {
+            case Nil => None
+            case h::t =>
+              comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
+          }
+        combosWinner(combos)
+      }
     }
   }
-
 }
