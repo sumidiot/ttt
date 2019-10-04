@@ -110,7 +110,9 @@ object Main extends App {
      * there's one way to use State[GameState, X] to play TicTacToe. Maybe that's right.
      * But how does that relate to being able to make State instances in a few different
      * ways, and then being able to call .info or .take on them (with the Ops above)?
-     * It's sorta like that implicit ops thing is not what I should be doing.
+     * It's sorta like that implicit ops thing is not what I should be doing, except, I
+     * guess, that at the abstract level, we might not know that for a given F[_] there'd
+     * only be one reasonable implementation of TicTacToe[F]?
      */
     type SGS[X] = State[GameState, X]
     implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
