@@ -100,6 +100,19 @@ object Main extends App {
     }
   }
 
+  /**
+   * These are one choice we could make about how to represent a game.
+   * Another is a string with the first character being whose turn it is,
+   * and then 9 subsequent characters for the board positions, with X, O, or . in them.
+   * In that case, we might still have a State[String, ] monad, and we'd have one
+   * implementation of TicTacToe for it. This, of course, is mostly just relying on
+   * some equivalance between two different representations of GameState. In some sense,
+   * you might imagine a TicTacToeState trait, with operations like info and take,
+   * and then State[TTTS, _] is TicTacToe for any TTTS : TicTacToeState. That seems
+   * duplicative, or maybe I've missed the mark with my SGS bits below.
+   *
+   * What would a non-State-based implementation look like? Maybe a database, so IO?
+   */
   type Board = Map[Position, Player]
   case class GameState(p: Player, b: Board)
 
