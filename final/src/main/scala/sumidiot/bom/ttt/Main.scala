@@ -2,6 +2,7 @@ package sumidiot.bom.ttt
 
 import cats._
 import cats.implicits._
+import cats.data.State
 
 object Main extends App {
 
@@ -90,9 +91,12 @@ object Main extends App {
   }
 
   object TicTacToeSyntax {
-    implicit class TicTacToeOps[F](f: F) {
-      def info[F[_]: TicTacToe : Monad](p: Position): F[Option[Player]] =
+    implicit class TicTacToeOps[F[_] : TicTacToe : Monad, X](f: F[X]) {
+      def info(p: Position): F[Option[Player]] =
         implicitly[TicTacToe[F]].info(p)
+
+      def take(p: Position): F[Result] =
+        implicitly[TicTacToe[F]].take(p)
     }
   }
 
@@ -100,9 +104,16 @@ object Main extends App {
   case class GameState(p: Player, b: Board)
 
   object TicTacToe {
-    import cats.data.State
+
+    /**
+     * There's something I don't like about the below. Sort of, it's saying that
+     * there's one way to use State[GameState, X] to play TicTacToe. Maybe that's right.
+     * But how does that relate to being able to make State instances in a few different
+     * ways, and then being able to call .info or .take on them (with the Ops above)?
+     * It's sorta like that implicit ops thing is not what I should be doing.
+     */
     type SGS[X] = State[GameState, X]
-    implicit case object ThingIsTTT extends TicTacToe[SGS] {
+    implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
       def info(p: Position): State[GameState, Option[Player]] = {
         State(game => {
           (game, game.b.get(p))
@@ -169,16 +180,19 @@ object Main extends App {
    * Example usage:
    * import sumidiot.bom.ttt.Main._
    * val g = GameState(Player.O, Map.empty)
-   * implicit val i = TicTacToe.ThingIsTTT
    * takeIfNotTaken(Position(BoardIndex.F, BoardIndex.F)).run(g).value
-   * takeIfNotTaken(Position(BoardIndex.S, BoardIndex.F)).run(res5._1).value
    */
 
   /**
    * Another, maybe using the implicits above? Maybe unnecessary?
-   * imports*
-   * val s = State[GameState, Unit](gs => (gs, ()))
-   *   // how is that different from s2.set(GameState(Player.X, Map.empty)) ?
+   * import cats.data.State
+   * import sumidiot.bom.ttt.Main._
+   * import TicTacToeSyntax._ // works because of previous line?
+   * val s = State[GameState, Unit]((_, ()))
    * s.info(Position(BoardIndex.F, BoardIndex.F)).run(GameState(Player.X, Map.empty))
+   *   // we could also do
+   *   // val s2 = State.set(GameState(Player.X, Map.empty))
+   *   // s2.run(GameState(Player.O, Map.empty)).value // (GameState(X, Map()), ())
+   *   //  s.run(GameState(Player.O, Map.empty)).value // (GameState(O, Map()), ())
    */
 }
