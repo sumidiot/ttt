@@ -89,8 +89,7 @@ object Main extends App {
                   // The player could be p or pp, so probably i need to 'continue' one of them, and
                   //   leave the other alone. Sorta gotta splice the continuations or something
                   Info(p, op => { // op is now an Option[Player]
-                    // note that pp is unused in here, which makes me antsy
-                    this.ap(kk(op))(k(op))
+                    this.ap(ii)(k(op))
                   })
                 }
                 case tt@Take(pp, kk) => {
@@ -117,7 +116,31 @@ object Main extends App {
               }
             }
             case t@Take(p, k) => {
-              ???
+              ff match {
+                case ii@Info(pp, kk) => {
+                  Take(p, op => {
+                    // supposed to return a TicTacToe[B]
+                    // k: Result => TicTacToe[A]
+                    // kk: Option[Player] => TicTacToe[A => B]
+                    // op: Result
+                    // def ap[A, B](ff: TicTacToe[A => B])(fa: TicTacToe[A]): TicTacToe[B]
+                    this.ap(ii)(k(op))
+                  })
+                }
+                case tt@Take(pp, kk) => {
+                  Take(p, op => {
+                    // fa: TicTacToe[A], is t: Take[A], p: Position, k: Result => TicTacToe[A]
+                    // ff: TicTacToe[A => B], is tt: Take[A => B], pp: Position, kk: Result => TicTacToe[A => B]
+                    // op: Result
+                    this.ap(tt)(k(op))
+                  })
+                }
+                case dd@Done(aa) => {
+                  Take(p, op => {
+                    fttt.map(k(op))(aa)
+                  })
+                }
+              }
             }
             case d@Done(a) => {
               ff match {
