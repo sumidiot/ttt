@@ -1,9 +1,10 @@
 package sumidiot.bom.ttt
 
 import cats._
+//import cats.data._
 import cats.implicits._
 
-// import scala.annotation.tailrec
+import scala.annotation.tailrec
 
 object Main extends App {
 
@@ -179,36 +180,67 @@ object Main extends App {
        * We don't require the evidence of being Applicative, I guess
        * and the compiler errors out with unused (implicit attt: Applicative[TicTacToe])
        */
-    implicit def ticTacToeMonad: Monad[TicTacToe] =
-      new Monad[TicTacToe] {
-        override def pure[A](a: A): TicTacToe[A] =
-          Done(a)
+    implicit case object TicTacToeMonad extends Monad[TicTacToe] {
+      override def pure[A](a: A): TicTacToe[A] =
+        Done(a)
 
-        override def flatMap[A, B](fa: TicTacToe[A])(f: A => TicTacToe[B]): TicTacToe[B] = {
-          fa match {
-            case i@Info(p, k) => {
-              Info(p, op => {
-                this.flatMap(k(op))(f)
-              })
-            }
-            case t@Take(p, k) => {
-              Take(p, r => {
-                this.flatMap(k(r))(f)
-              })
-            }
-            case d@Done(a) => {
-              f(a)
-            }
+      override def flatMap[A, B](fa: TicTacToe[A])(f: A => TicTacToe[B]): TicTacToe[B] = {
+        fa match {
+          case i@Info(p, k) => {
+            Info(p, op => {
+              this.flatMap(k(op))(f)
+            })
+          }
+          case t@Take(p, k) => {
+            Take(p, r => {
+              this.flatMap(k(r))(f)
+            })
+          }
+          case d@Done(a) => {
+            f(a)
           }
         }
+      }
 
-        // @tailrec
-        override def tailRecM[A, B](init: A)(fn: A => TicTacToe[Either[A, B]]): TicTacToe[B] = {
-          ???
+      @tailrec
+      override def tailRecM[A, B](init: A)(fn: A => TicTacToe[Either[A, B]]): TicTacToe[B] = {
+        fn(init) match {
+          case Done(Left(a)) => tailRecM(a)(fn)
+          case Done(Right(b)) => this.pure(b)
+          case Info(pos, k) => { // k: Option[Player] => TicTacToe[Either[A, B]]
+            ???
+          }
+          case Take(p, k) => {
+            ???
+          }
         }
       }
+    }
   }
 
+
+  def takeIfNotTaken1(p: Position): TicTacToe[Option[Result]] = {
+    Info(p, op => {
+      op match {
+        case Some(_) => Done(None)
+        case None    => Take(p, r => Done(Some(r)))
+      }
+    })
+  }
+
+  def info(p: Position): TicTacToe[Option[Player]] =
+    Info(p, TicTacToe.TicTacToeMonad.pure _)
+
+  def take(p: Position): TicTacToe[Result] =
+    Take(p, TicTacToe.TicTacToeMonad.pure _)
+
+  def takeIfNotTaken2(p: Position): TicTacToe[Option[Result]] = {
+    import cats.syntax.applicative._
+    info(p).flatMap { _ match {
+      case Some(_) => none[Result].pure[TicTacToe] // TicTacToe.TicTacToeMonad.pure(None)
+      case None    => take(p).map(_.some)
+    }}
+  }
 
 
 }
