@@ -1,7 +1,7 @@
 package sumidiot.bom.ttt
 
 import cats._
-//import cats.data._
+import cats.data._
 import cats.implicits._
 
 import scala.annotation.tailrec
@@ -242,5 +242,80 @@ object Main extends App {
     }}
   }
 
+
+  type Board = Map[Position, Player]
+  case class GameState(p: Player, b: Board)
+  type SGS[X] = State[GameState, X]
+
+  def runGame[A](ttt: TicTacToe[A]): SGS[A] = {
+    ttt match {
+      case i@Info(p, k) => {
+        // the for comprehension below is the same as this:
+        // State.get[GameState].flatMap(gs => runGame(k(gs.b.get(p))))
+        for {
+          gs <- State.get[GameState]
+          a <- runGame(k(gs.b.get(p)))
+        } yield {
+          a
+        }
+      }
+      case t@Take(p, k) => {
+        /**
+        winner(game.b) match {
+          case Some(p) => (game, Result.GameEnded(p))
+          case None    =>
+            game.b.get(pos) match {
+              case Some(p) => (game, Result.AlreadyTaken(p))
+              case None    =>
+                val nb = game.b + (pos -> game.p)
+                val ng = GameState(Player.other(game.p), nb)
+                winner(nb) match {
+                  case Some(p) => (ng, Result.GameEnded(p))
+                  case None    => (ng, Result.NextTurn)
+                }
+            }
+        }
+        */
+      }
+      case d@Done(a) => {
+        State.pure(a)
+      }
+    }
+  }
+
+  def winner(b: Board): Option[Player] = {
+    /**
+     * Well, this is entertaining. I need `winner` to be defined to define
+     * `take`, so that I can show I'm a TicTacToe, after which point I can
+     * use the more generic `winner`. Clearly I've done something wrong.
+     */
+    import BoardIndex._
+    val combos = List(
+                  (Position(F, F), Position(F, S), Position(F, T)),
+                  (Position(S, F), Position(S, S), Position(S, T)),
+                  (Position(T, F), Position(T, S), Position(T, T)),
+                  (Position(F, F), Position(S, F), Position(T, F)),
+                  (Position(F, S), Position(S, S), Position(T, S)),
+                  (Position(F, T), Position(S, T), Position(T, T)),
+                  (Position(F, F), Position(S, S), Position(T, T)),
+                  (Position(T, F), Position(S, S), Position(F, T)))
+
+    def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
+      for {
+        pl1 <- b.get(pos1)
+        pl2 <- b.get(pos2)
+        pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
+      } yield {
+        pl3
+      }
+    }
+    def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
+      cs match {
+        case Nil => None
+        case h::t =>
+          comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
+      }
+    combosWinner(combos)
+  }
 
 }
