@@ -1,47 +1,14 @@
 package sumidiot.bom.ttt
 
+import Common._
+
 import cats._
 import cats.data._
 import cats.implicits._
 
 import scala.annotation.tailrec
 
-object Main extends App {
-
-  /**
-   * This top section is the same as in the final style example
-   */
-
-  sealed trait BoardIndex
-  object BoardIndex {
-    final case object F extends BoardIndex
-    final case object S extends BoardIndex
-    final case object T extends BoardIndex
-  }
-  final case class Position(row: BoardIndex, col: BoardIndex)
-  
-  sealed trait Player
-  object Player {
-    final case object X extends Player
-    final case object O extends Player
-
-    def other(p: Player): Player =
-      p match {
-        case X => O
-        case O => X
-      }
-  }
-  
-  sealed trait Result
-  object Result {
-    final case class AlreadyTaken(by: Player) extends Result
-    final case object NextTurn extends Result
-    final case class GameEnded(winner: Player) extends Result
-  }
-
-  /**
-   * These are the new bits for initial style
-   */
+object Iniital extends App {
 
   sealed abstract class TicTacToe[A]
   /**
@@ -62,7 +29,7 @@ object Main extends App {
               Info(p, op => this.map(k(op))(f)) // recursive
             }
             case t@Take(p, k) => {
-              Take(p, op => this.map(k(op))(f))
+              Take(p, op => this.map(k(op))(f)) // recursive
             }
             case d@Done(a) => {
               Done(f(a))
@@ -73,7 +40,7 @@ object Main extends App {
 
     
     /**
-     * I have no idea if (and little confidence that) this is 'lawful'
+     * I have no idea if (and only little confidence that) this is 'lawful'
      */
     implicit def ticTacToeApplicative(implicit fttt: Functor[TicTacToe]): Applicative[TicTacToe] =
       new Applicative[TicTacToe] {
@@ -243,10 +210,6 @@ object Main extends App {
   }
 
 
-  type Board = Map[Position, Player]
-  case class GameState(p: Player, b: Board)
-  type SGS[X] = State[GameState, X]
-
   def runGame[A](ttt: TicTacToe[A]): SGS[A] = {
     ttt match {
       case i@Info(p, k) => {
@@ -282,41 +245,6 @@ object Main extends App {
         State.pure(a)
       }
     }
-  }
-
-  def winner(b: Board): Option[Player] = {
-    /**
-     * Well, this is entertaining. I need `winner` to be defined to define
-     * `take`, so that I can show I'm a TicTacToe, after which point I can
-     * use the more generic `winner`. Clearly I've done something wrong.
-     */
-    import BoardIndex._
-    val combos = List(
-                  (Position(F, F), Position(F, S), Position(F, T)),
-                  (Position(S, F), Position(S, S), Position(S, T)),
-                  (Position(T, F), Position(T, S), Position(T, T)),
-                  (Position(F, F), Position(S, F), Position(T, F)),
-                  (Position(F, S), Position(S, S), Position(T, S)),
-                  (Position(F, T), Position(S, T), Position(T, T)),
-                  (Position(F, F), Position(S, S), Position(T, T)),
-                  (Position(T, F), Position(S, S), Position(F, T)))
-
-    def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
-      for {
-        pl1 <- b.get(pos1)
-        pl2 <- b.get(pos2)
-        pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
-      } yield {
-        pl3
-      }
-    }
-    def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
-      cs match {
-        case Nil => None
-        case h::t =>
-          comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
-      }
-    combosWinner(combos)
   }
 
 }
