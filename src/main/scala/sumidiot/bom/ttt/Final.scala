@@ -25,7 +25,7 @@ import cats.data.State
  *   // s2.run(GameState(Player.O, Map.empty)).value // (GameState(X, Map()), ())
  *   //  s.run(GameState(Player.O, Map.empty)).value // (GameState(O, Map()), ())
  */
-object Final extends App {
+object Final {
 
   trait TicTacToe[F[_]] {
     def info(p: Position): F[Option[Player]]

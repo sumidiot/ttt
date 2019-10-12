@@ -47,6 +47,8 @@ object Common {
   type Board = Map[Position, Player]
   case class GameState(p: Player, b: Board)
 
+  val StartingGame = GameState(Player.X, Map.empty)
+
   type SGS[X] = State[GameState, X]
 
   def winner(b: Board): Option[Player] = {

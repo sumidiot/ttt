@@ -8,7 +8,31 @@ import cats.implicits._
 
 import scala.annotation.tailrec
 
-object Iniital extends App {
+
+/**
+ * Example usage:
+ *
+   import sumidiot.bom.ttt.Common._
+   import sumidiot.bom.ttt.Initial._
+   import cats.implicits._
+   val i = info(Position(BoardIndex.F, BoardIndex.F))
+   val ig = runGame(i)
+   ig.run(StartingGame).value
+ 
+   val steps = for {
+     op <- info(Position(BoardIndex.F, BoardIndex.F))
+     _ <- println(op).pure[TicTacToe]
+     r <- take(Position(BoardIndex.F, BoardIndex.F))
+     _ <- println(r).pure[TicTacToe]
+     op2 <- info(Position(BoardIndex.F, BoardIndex.F))
+     _ <- println(op2).pure[TicTacToe]
+   } yield {
+     ()
+   }
+   val stepsG = runGame(steps)
+   stepsG.run(StartingGame).value
+ */
+object Initial {
 
   sealed abstract class TicTacToe[A]
   /**
