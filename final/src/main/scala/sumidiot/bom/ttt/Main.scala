@@ -130,9 +130,11 @@ object Main extends App {
     type SGS[X] = State[GameState, X]
     implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
       def info(p: Position): State[GameState, Option[Player]] = {
-        State(game => {
-          (game, game.b.get(p))
-        })
+        for {
+          game <- State.get[GameState]
+        } yield {
+          game.b.get(p)
+        }
       }
 
       def take(pos: Position): State[GameState, Result] = {

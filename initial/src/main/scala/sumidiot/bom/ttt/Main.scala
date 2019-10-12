@@ -259,23 +259,24 @@ object Main extends App {
           a
         }
       }
-      case t@Take(p, k) => {
-        /**
-        winner(game.b) match {
-          case Some(p) => (game, Result.GameEnded(p))
-          case None    =>
-            game.b.get(pos) match {
-              case Some(p) => (game, Result.AlreadyTaken(p))
-              case None    =>
-                val nb = game.b + (pos -> game.p)
-                val ng = GameState(Player.other(game.p), nb)
-                winner(nb) match {
-                  case Some(p) => (ng, Result.GameEnded(p))
-                  case None    => (ng, Result.NextTurn)
-                }
-            }
-        }
-        */
+      case t@Take(pos, k) => { // k: Result => TicTacToe[A]
+        State.get[GameState].flatMap { gs =>
+          winner(gs.b) match {
+            case Some(p) => runGame(k(Result.GameEnded(p)))
+            case None =>
+              gs.b.get(pos) match {
+                case Some(p) => runGame(k(Result.AlreadyTaken(p)))
+                case None    =>
+                  val nb = gs.b + (pos -> gs.p)
+                  val ng = GameState(Player.other(gs.p), nb)
+                  for {
+                    _ <- State.set(ng)
+                    a <- runGame(k(winner(nb).fold[Result](Result.NextTurn)(p => Result.GameEnded(p))))
+                  } yield {
+                    a
+                  }
+              }
+        }}
       }
       case d@Done(a) => {
         State.pure(a)
