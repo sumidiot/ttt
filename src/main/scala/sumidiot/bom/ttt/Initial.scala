@@ -31,6 +31,8 @@ import scala.annotation.tailrec
    }
    val stepsG = runGame(steps)
    stepsG.run(StartingGame).value
+
+   runGame(runRandom()).run(StartingGame).value
  */
 object Initial {
 
@@ -267,6 +269,21 @@ object Initial {
       }
       case d@Done(a) => {
         State.pure(a)
+      }
+    }
+  }
+
+  /**
+   * This just about works, but it does fail to recognize that you can end in a draw
+   */
+  def runRandom(exceptions: Set[Position] = Set.empty): TicTacToe[Player] = {
+    val rpos = randomPosition(exceptions)
+    takeIfNotTaken2(rpos).flatMap { or =>
+      or match {
+        case Some(Result.GameEnded(p)) => p.pure[TicTacToe]
+        case Some(Result.AlreadyTaken(p)) => runRandom(exceptions + rpos)
+        case Some(Result.NextTurn) => runRandom(exceptions)
+        case None    => runRandom(exceptions + rpos)
       }
     }
   }

@@ -12,6 +12,21 @@ object Common {
   }
   final case class Position(row: BoardIndex, col: BoardIndex)
 
+  val allPositions =
+    List(
+      Position(BoardIndex.F, BoardIndex.F),
+      Position(BoardIndex.F, BoardIndex.S),
+      Position(BoardIndex.F, BoardIndex.T),
+      Position(BoardIndex.S, BoardIndex.F),
+      Position(BoardIndex.S, BoardIndex.S),
+      Position(BoardIndex.S, BoardIndex.T),
+      Position(BoardIndex.T, BoardIndex.F),
+      Position(BoardIndex.T, BoardIndex.S),
+      Position(BoardIndex.T, BoardIndex.T),
+    )
+  def randomPosition(exceptions: Set[Position]): Position =
+    scala.util.Random.shuffle((allPositions.toSet -- exceptions).toList).head
+
   sealed trait Player
   object Player {
     final case object X extends Player
@@ -45,7 +60,20 @@ object Common {
    * What would a non-State-based implementation look like? Maybe a database, so IO?
    */
   type Board = Map[Position, Player]
-  case class GameState(p: Player, b: Board)
+  case class GameState(p: Player, b: Board) {
+    override def toString(): String = {
+      def bchar(r: BoardIndex, c: BoardIndex): String =
+        b.get(Position(r, c)).map(_.toString).getOrElse(".")
+      s"""
+      |Player $p's turn, given:
+      |  ${bchar(BoardIndex.F, BoardIndex.F)} | ${bchar(BoardIndex.F, BoardIndex.S)} | ${bchar(BoardIndex.F, BoardIndex.T)}
+      |  ---------
+      |  ${bchar(BoardIndex.S, BoardIndex.F)} | ${bchar(BoardIndex.S, BoardIndex.S)} | ${bchar(BoardIndex.S, BoardIndex.T)}
+      |  ---------
+      |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
+      """.stripMargin
+    }
+  }
 
   val StartingGame = GameState(Player.X, Map.empty)
 
