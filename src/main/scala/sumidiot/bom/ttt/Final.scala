@@ -117,16 +117,16 @@ object Final {
 
       def take(pos: Position): State[GameState, Result] = {
         State(game => {
-          Common.winner(game.b) match {
-            case Some(p) => (game, Result.GameEnded(p))
+          Common.gameEnded(game.b) match {
+            case Some(ge) => (game, ge)
             case None    =>
               game.b.get(pos) match {
                 case Some(p) => (game, Result.AlreadyTaken(p))
                 case None    =>
                   val nb = game.b + (pos -> game.p)
                   val ng = GameState(Player.other(game.p), nb)
-                  Common.winner(nb) match {
-                    case Some(p) => (ng, Result.GameEnded(p))
+                  Common.gameEnded(nb) match {
+                    case Some(ge) => (ng, ge)
                     case None    => (ng, Result.NextTurn)
                   }
               }

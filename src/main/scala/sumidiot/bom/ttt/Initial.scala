@@ -250,8 +250,8 @@ object Initial {
       }
       case t@Take(pos, k) => { // k: Result => TicTacToe[A]
         State.get[GameState].flatMap { gs =>
-          winner(gs.b) match {
-            case Some(p) => runGame(k(Result.GameEnded(p)))
+          gameEnded(gs.b) match {
+            case Some(ge) => runGame(k(ge))
             case None =>
               gs.b.get(pos) match {
                 case Some(p) => runGame(k(Result.AlreadyTaken(p)))
@@ -260,7 +260,7 @@ object Initial {
                   val ng = GameState(Player.other(gs.p), nb)
                   for {
                     _ <- State.set(ng)
-                    a <- runGame(k(winner(nb).fold[Result](Result.NextTurn)(p => Result.GameEnded(p))))
+                    a <- runGame(k(gameEnded(nb).getOrElse(Result.NextTurn)))
                   } yield {
                     a
                   }
@@ -273,14 +273,11 @@ object Initial {
     }
   }
 
-  /**
-   * This just about works, but it does fail to recognize that you can end in a draw
-   */
-  def runRandom(exceptions: Set[Position] = Set.empty): TicTacToe[Player] = {
+  def runRandom(exceptions: Set[Position] = Set.empty): TicTacToe[Option[Player]] = {
     val rpos = randomPosition(exceptions)
     takeIfNotTaken2(rpos).flatMap { or =>
       or match {
-        case Some(Result.GameEnded(p)) => p.pure[TicTacToe]
+        case Some(Result.GameEnded(op)) => op.pure[TicTacToe]
         case Some(Result.AlreadyTaken(p)) => runRandom(exceptions + rpos)
         case Some(Result.NextTurn) => runRandom(exceptions)
         case None    => runRandom(exceptions + rpos)

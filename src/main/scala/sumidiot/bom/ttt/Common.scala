@@ -1,6 +1,7 @@
 package sumidiot.bom.ttt
 
 import cats.data.State
+import cats.implicits._
 
 object Common {
   
@@ -43,7 +44,7 @@ object Common {
   object Result {
     final case class AlreadyTaken(by: Player) extends Result
     final case object NextTurn extends Result
-    final case class GameEnded(winner: Player) extends Result
+    final case class GameEnded(winner: Option[Player]) extends Result
   }
 
   /**
@@ -78,6 +79,22 @@ object Common {
   val StartingGame = GameState(Player.X, Map.empty)
 
   type SGS[X] = State[GameState, X]
+
+  def gameEnded(b: Board): Option[Result.GameEnded] = {
+    winner(b) match {
+      case w@Some(p) => Some(Result.GameEnded(w))
+      case None =>
+        if (isDraw(b)) {
+          Some(Result.GameEnded(None))
+        } else {
+          None
+        }
+    }
+  }
+
+  def isDraw(b: Board): Boolean = {
+    allPositions.traverse(b.get).isDefined
+  }
 
   def winner(b: Board): Option[Player] = {
     import BoardIndex._
