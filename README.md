@@ -25,3 +25,9 @@ trippy, honestly.
 This object contains the 'initial-style' implementation for the custom TicTacToe monad. Actually,
 it only contains most of it, I haven't worked out the `@tailrec` implementation of `flatMap` which
 would be required generally for cats instances of `Monad`.
+
+## [Free](src/main/scala/sumidiot/bom/ttt/Free.scala)
+
+This one is still in progress, and might be slow going.
+
+
