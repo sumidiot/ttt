@@ -1,5 +1,8 @@
 package sumidiot.bom.ttt
 
+import cats._
+import Common._
+
 object Free {
 
   sealed abstract class TicTacToe[A]
@@ -20,7 +23,7 @@ object Free {
     implicit def ticTacToeFunctor: Functor[TicTacToe] =
       new Functor[TicTacToe] {
         def map[A, B](fa: TicTacToe[A])(f: A => B): TicTacToe[B] = {
-          FlatMap(fa, a => Done(f(a)))
+          FlatMap(fa, (a: A) => Done(f(a)))
         }
       }
 
