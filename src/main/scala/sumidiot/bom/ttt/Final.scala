@@ -8,7 +8,7 @@ import cats.data.State
 
 /**
  * Example usage:
- * import sumidiot.bom.ttt.Main._
+ * import sumidiot.bom.ttt.Final._
  * val g = GameState(Player.O, Map.empty)
  * takeIfNotTaken(Position(BoardIndex.F, BoardIndex.F)).run(g).value
  */
@@ -16,7 +16,7 @@ import cats.data.State
 /**
  * Another, maybe using the implicits above? Maybe unnecessary?
  * import cats.data.State
- * import sumidiot.bom.ttt.Main._
+ * import sumidiot.bom.ttt.Final._
  * import TicTacToeSyntax._ // works because of previous line?
  * val s = State[GameState, Unit]((_, ()))
  * s.info(Position(BoardIndex.F, BoardIndex.F)).run(GameState(Player.X, Map.empty))
@@ -24,6 +24,18 @@ import cats.data.State
  *   // val s2 = State.set(GameState(Player.X, Map.empty))
  *   // s2.run(GameState(Player.O, Map.empty)).value // (GameState(X, Map()), ())
  *   //  s.run(GameState(Player.O, Map.empty)).value // (GameState(O, Map()), ())
+ */
+
+/**
+ * And here's one with randomPlay:
+
+import cats.data.State
+import sumidiot.bom.ttt.Common._
+import sumidiot.bom.ttt.Final._
+runRandom().run(StartingGame).value
+// that line is crazy. runRandom() returns a SGS... why!? if i had multiple implementations
+// would it fail then maybe?
+
  */
 object Final {
 
@@ -82,6 +94,18 @@ object Final {
           }
       }
     combosWinner(combos)
+  }
+
+  def runRandom[F[_] : TicTacToe : Monad](exceptions: Set[Position] = Set.empty): F[Option[Player]] = {
+    val rpos = randomPosition(exceptions)
+    takeIfNotTaken(rpos).flatMap { or =>
+      or match {
+        case Some(Result.GameEnded(op)) => op.pure[F]
+        case Some(Result.AlreadyTaken(p)) => runRandom(exceptions + rpos)
+        case Some(Result.NextTurn) => runRandom(exceptions)
+        case None    => runRandom(exceptions + rpos)
+      }
+    }
   }
 
   object TicTacToeSyntax {
