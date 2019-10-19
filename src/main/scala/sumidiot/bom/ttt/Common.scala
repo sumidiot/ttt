@@ -28,6 +28,20 @@ object Common {
   def randomPosition(exceptions: Set[Position]): Position =
     scala.util.Random.shuffle((allPositions.toSet -- exceptions).toList).head
 
+  val winningCombos = {
+    import BoardIndex._
+    List(
+         (Position(F, F), Position(F, S), Position(F, T)),
+         (Position(S, F), Position(S, S), Position(S, T)),
+         (Position(T, F), Position(T, S), Position(T, T)),
+         (Position(F, F), Position(S, F), Position(T, F)),
+         (Position(F, S), Position(S, S), Position(T, S)),
+         (Position(F, T), Position(S, T), Position(T, T)),
+         (Position(F, F), Position(S, S), Position(T, T)),
+         (Position(T, F), Position(S, S), Position(F, T))
+    )
+  }
+
   sealed trait Player
   object Player {
     final case object X extends Player
@@ -97,17 +111,6 @@ object Common {
   }
 
   def winner(b: Board): Option[Player] = {
-    import BoardIndex._
-    val combos = List(
-                  (Position(F, F), Position(F, S), Position(F, T)),
-                  (Position(S, F), Position(S, S), Position(S, T)),
-                  (Position(T, F), Position(T, S), Position(T, T)),
-                  (Position(F, F), Position(S, F), Position(T, F)),
-                  (Position(F, S), Position(S, S), Position(T, S)),
-                  (Position(F, T), Position(S, T), Position(T, T)),
-                  (Position(F, F), Position(S, S), Position(T, T)),
-                  (Position(T, F), Position(S, S), Position(F, T)))
-
     def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
       for {
         pl1 <- b.get(pos1)
@@ -123,7 +126,7 @@ object Common {
         case h::t =>
           comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
       }
-    combosWinner(combos)
+    combosWinner(winningCombos)
   }
 
 }

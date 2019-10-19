@@ -6,94 +6,42 @@ import cats._
 import cats.implicits._
 import cats.data.State
 
-/**
- * Example usage:
- * import sumidiot.bom.ttt.Final._
- * val g = GameState(Player.O, Map.empty)
- * takeIfNotTaken(Position(BoardIndex.F, BoardIndex.F)).run(g).value
- */
 
 /**
- * Another, maybe using the implicits above? Maybe unnecessary?
- * import cats.data.State
- * import sumidiot.bom.ttt.Final._
- * import TicTacToeSyntax._ // works because of previous line?
- * val s = State[GameState, Unit]((_, ()))
- * s.info(Position(BoardIndex.F, BoardIndex.F)).run(GameState(Player.X, Map.empty))
- *   // we could also do
- *   // val s2 = State.set(GameState(Player.X, Map.empty))
- *   // s2.run(GameState(Player.O, Map.empty)).value // (GameState(X, Map()), ())
- *   //  s.run(GameState(Player.O, Map.empty)).value // (GameState(O, Map()), ())
+ * With final-style, we set up a typeclass for being a TicTacToe, where the methods
+ * return things "wrapped" in the typeclass instance. When we need to chain those methods to define
+ * higher-level methods (e.g., takeIfNotTaken below), we add Monad (or Applicative)
+ * requirements to F.
  */
-
-/**
- * And here's one with randomPlay:
-
-import cats.data.State
-import sumidiot.bom.ttt.Common._
-import sumidiot.bom.ttt.Final._
-runRandom().run(StartingGame).value
-// that line is crazy. runRandom() returns a SGS... why!? if i had multiple implementations
-// would it fail then maybe?
-
- */
-object Final {
+object Final extends App {
 
   trait TicTacToe[F[_]] {
     def info(p: Position): F[Option[Player]]
     def take(p: Position): F[Result]
   }
 
-  def takeIfNotTaken[F[_]: TicTacToe : Monad](p: Position): F[Option[Result]] = {
-    val ttt = implicitly[TicTacToe[F]]
-    val mf  = implicitly[Monad[F]]
-    ttt.info(p).flatMap { _ match {
-      case Some(_) => mf.pure(None)
-      case None    => ttt.take(p).map(_.some)
-    }
-    }
+  /**
+   * This syntax ends up letting us write exactly the same implementation of
+   * takeIfNotTaken between Final and Free implementations.
+   * This makes me think of these a little like the smart constructors.
+   */
+  object TicTacToeSyntax {
+    def info[F[_]](p: Position)(implicit ev: TicTacToe[F]): F[Option[Player]] =
+      ev.info(p)
+
+    def take[F[_]](p: Position)(implicit ev: TicTacToe[F]): F[Result] =
+      ev.take(p)
   }
 
-  def winner[F[_]: TicTacToe : Monad]: F[Option[Player]] = {
-    val ttt = implicitly[TicTacToe[F]]
-    val mf  = implicitly[Monad[F]]
-    import BoardIndex._
-    val combos = List(
-                  (Position(F, F), Position(F, S), Position(F, T)),
-                  (Position(S, F), Position(S, S), Position(S, T)),
-                  (Position(T, F), Position(T, S), Position(T, T)),
-                  (Position(F, F), Position(S, F), Position(T, F)),
-                  (Position(F, S), Position(S, S), Position(T, S)),
-                  (Position(F, T), Position(S, T), Position(T, T)),
-                  (Position(F, F), Position(S, S), Position(T, T)),
-                  (Position(T, F), Position(S, S), Position(F, T)))
-    def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
-      for {
-        pl1 <- ttt.info(pos1)
-        pl2 <- ttt.info(pos2)
-        pl3 <- ttt.info(pos3)
-      } yield {
-        for {
-          pl1_ <- pl1
-          pl2_ <- pl2
-          pl3_ <- pl3 if pl1_ == pl2_ && pl2_ == pl3_
-        } yield {
-          pl3_
-        }
-      }   
+  import TicTacToeSyntax._
+
+  def takeIfNotTaken[F[_] : TicTacToe : Monad](p: Position): F[Option[Result]] = {
+    for {
+      op <- info(p)
+      or <- op.fold(take(p).map(_.some))(p => none.pure[F])
+    } yield {
+      or
     }
-    def combosWinner(cs: List[(Position, Position, Position)]): F[Option[Player]] =
-      cs match {
-        case Nil => mf.pure(None)
-        case h::t =>
-          comboWinner(h._1, h._2, h._3).flatMap {
-            w => w match {
-              case None => combosWinner(t)
-              case Some(p) => mf.pure(Some(p))
-            }
-          }
-      }
-    combosWinner(combos)
   }
 
   def runRandom[F[_] : TicTacToe : Monad](exceptions: Set[Position] = Set.empty): F[Option[Player]] = {
@@ -108,27 +56,32 @@ object Final {
     }
   }
 
-  object TicTacToeSyntax {
-    implicit class TicTacToeOps[F[_] : TicTacToe : Monad, X](f: F[X]) {
-      def info(p: Position): F[Option[Player]] =
-        implicitly[TicTacToe[F]].info(p)
-
-      def take(p: Position): F[Result] =
-        implicitly[TicTacToe[F]].take(p)
+  def winner[F[_]: TicTacToe : Monad]: F[Option[Player]] = {
+    def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
+      for {
+        pl1 <- info(pos1)
+        pl2 <- info(pos2)
+        pl3 <- info(pos3)
+      } yield {
+        for {
+          pl1_ <- pl1
+          pl2_ <- pl2
+          pl3_ <- pl3 if pl1_ == pl2_ && pl2_ == pl3_
+        } yield {
+          pl3_
+        }
+      }   
     }
+    winningCombos
+      .traverse(t => comboWinner(t._1, t._2, t._3))
+      .map(_.flatten.headOption)
   }
 
 
   object TicTacToe {
 
     /**
-     * There's something I don't like about the below. Sort of, it's saying that
-     * there's one way to use State[GameState, X] to play TicTacToe. Maybe that's right.
-     * But how does that relate to being able to make State instances in a few different
-     * ways, and then being able to call .info or .take on them (with the Ops above)?
-     * It's sorta like that implicit ops thing is not what I should be doing, except, I
-     * guess, that at the abstract level, we might not know that for a given F[_] there'd
-     * only be one reasonable implementation of TicTacToe[F]?
+     * This provides an implementation of SGS[_] as a TicTacToe.
      */
     implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
       def info(p: Position): State[GameState, Option[Player]] = {
@@ -160,5 +113,11 @@ object Final {
 
     }
   }
+
+
+  /**
+   * This is the 'main' of the 'App', just a quick demo
+   */
+  println(runRandom().run(StartingGame).value)
 
 }

@@ -5,7 +5,6 @@ import cats.data.State
 import cats.implicits._
 import cats.free.Free
 import cats.free.Free.liftF
-import cats.arrow.FunctionK
 import cats.~>
 import Common._
 
@@ -17,7 +16,7 @@ import Common._
  runRandom().foldMap(freeState).run(StartingGame).value
 
  */
-object TTTFree {
+object TTTFree extends App {
 
   sealed abstract class TicTacToeA[A]
   case class Info(p: Position) extends TicTacToeA[Option[Player]]
@@ -34,7 +33,7 @@ object TTTFree {
   def takeIfNotTaken(p: Position): TicTacToe[Option[Result]] = {
     for {
       op <- info(p)
-      or <- op.fold(take(p).map(_.some))(p => none[Result].pure[TicTacToe])
+      or <- op.fold(take(p).map(_.some))(p => none.pure[TicTacToe])
     } yield {
       or
     }
@@ -86,4 +85,10 @@ object TTTFree {
           }
         }
     }
+
+
+  /**
+   * This is the 'main' of this 'App', just a quick little demo
+   */
+  println(runRandom().foldMap(freeState).run(StartingGame).value)
 }

@@ -4,6 +4,16 @@ This repo is an exploration in custom monads, specifically to represent the game
 following the "Book of Monads" descriptions in Chapter 13. Implementations are in scala, using
 the cats library.
 
+The book implements `takeIfNotTaken` for its custom monads. We extend this with `runRandom`,
+which probably doesn't do really the right thing with `Random` as a monad, but it's a start.
+We're currently also in the process of implementing `winner` and `gameEnded`, because currently
+those implementations are only for the `State`-based monad, but they should really be for
+any monad implementation.
+
+The current `GameState` is somewhat insufficient, really there should be two classes of states,
+one with a 'next player' and one representing a 'done' game (with either draw or winner,
+and possibly, for completeness/verifiability, the winning combo).
+
 ## [Common](src/main/scala/sumidiot/bom/ttt/Common.scala)
 
 This object contains some helpers that are used across a few implementations. In particular,
