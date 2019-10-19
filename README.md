@@ -8,7 +8,8 @@ the cats library.
 
 This object contains some helpers that are used across a few implementations. In particular,
 representations of the players and board positions, as well as some logic for calculating
-done-ness and winners.
+done-ness and winners. Note, however, that we intend to pull that logic out for use by any of
+the monad implementations.
 
 My concrete implementations of the versions below tend to rely on a `State[GameState, _]`,
 where `GameState` captures who'se turn it is and the state of the board. This is a bit different
@@ -26,8 +27,11 @@ This object contains the 'initial-style' implementation for the custom TicTacToe
 it only contains most of it, I haven't worked out the `@tailrec` implementation of `flatMap` which
 would be required generally for cats instances of `Monad`.
 
-## [Free](src/main/scala/sumidiot/bom/ttt/Free.scala)
+I'll probably evolve the Final and Free implementations, leaving this one alone for a while,
+because mostly this is used to motivate the Free monad.
 
-This one is still in progress, and might be slow going.
+## [Free](src/main/scala/sumidiot/bom/ttt/TTTFree.scala)
 
+This object contains the `Free`-based implementation of the TicTacToe monad. It's much nicer than
+the custom initial one.
 
