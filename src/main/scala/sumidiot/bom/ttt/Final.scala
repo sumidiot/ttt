@@ -56,7 +56,7 @@ object Final extends App {
     }
   }
 
-  def winner[F[_]: TicTacToe : Monad]: F[Option[Player]] = {
+  def winner[F[_] : TicTacToe : Monad]: F[Option[Player]] = {
     def comboWinner(pos1: Position, pos2: Position, pos3: Position): F[Option[Player]] = {
       for {
         pl1 <- info(pos1)
@@ -76,6 +76,35 @@ object Final extends App {
       .traverse(t => comboWinner(t._1, t._2, t._3))
       .map(_.flatten.headOption)
   }
+  
+  def gameEnded[F[_] : TicTacToe : Monad]: F[Option[Result.GameEnded]] =
+    for {
+      op <- winner // op is Option[Player]
+      fa <- op.fold(drawResult)(p => Result.GameEnded(Some(p)).some.pure[F])
+    } yield {
+      fa
+    }
+
+  def isDraw[F[_] : TicTacToe : Monad]: F[Boolean] =
+    allPositions
+      .traverse(pos => info(pos))
+      .map(_.traverse(x => x).isDefined)
+
+  def drawResult[F[_] : TicTacToe : Monad]: F[Option[Result.GameEnded]] =
+    isDraw.map(d =>
+        if (d) {
+          Some(Result.GameEnded(None))
+        } else {
+          None
+        }
+    )
+
+  /*
+  def tryToTake[F[_] : TicTacToe : Monad]: F[Result] =
+    for {
+
+    }
+  */
 
 
   object TicTacToe {
@@ -93,6 +122,12 @@ object Final extends App {
       }
 
       def take(pos: Position): State[GameState, Result] = {
+        /*
+        for {
+          ge <- gameEnded // ge is an Option[Result.GameEnded]
+          res <- ge.fold(tryToTake)(_.pure)
+        }
+        */
         State(game => {
           Common.gameEnded(game.b) match {
             case Some(ge) => (game, ge)
