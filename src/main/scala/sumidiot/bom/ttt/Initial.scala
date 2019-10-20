@@ -250,7 +250,7 @@ object Initial {
       }
       case t@Take(pos, k) => { // k: Result => TicTacToe[A]
         State.get[GameState].flatMap { gs =>
-          gameEnded(gs.b) match {
+          StateCheats.gameEnded(gs.b) match {
             case Some(ge) => runGame(k(ge))
             case None =>
               gs.b.get(pos) match {
@@ -260,7 +260,7 @@ object Initial {
                   val ng = GameState(Player.other(gs.p), nb)
                   for {
                     _ <- State.set(ng)
-                    a <- runGame(k(gameEnded(nb).getOrElse(Result.NextTurn)))
+                    a <- runGame(k(StateCheats.gameEnded(nb).getOrElse(Result.NextTurn)))
                   } yield {
                     a
                   }

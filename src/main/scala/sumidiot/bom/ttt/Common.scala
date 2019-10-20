@@ -94,39 +94,48 @@ object Common {
 
   type SGS[X] = State[GameState, X]
 
-  def gameEnded(b: Board): Option[Result.GameEnded] = {
-    winner(b) match {
-      case w@Some(p) => Some(Result.GameEnded(w))
-      case None =>
-        if (isDraw(b)) {
-          Some(Result.GameEnded(None))
-        } else {
-          None
+  /**
+   * This object some stores some simple methods which rely entirely on the State
+   * implementation for results. Note that all of them are abstracted up and out in
+   * Final and Free.
+   */
+  object StateCheats {
+
+    def gameEnded(b: Board): Option[Result.GameEnded] = {
+      winner(b) match {
+        case w@Some(p) => Some(Result.GameEnded(w))
+        case None =>
+          if (isDraw(b)) {
+            Some(Result.GameEnded(None))
+          } else {
+            None
+          }
+      }
+    }
+
+    def isDraw(b: Board): Boolean = {
+      allPositions.traverse(b.get).isDefined
+    }
+
+    def winner(b: Board): Option[Player] = {
+      def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
+        for {
+          pl1 <- b.get(pos1)
+          pl2 <- b.get(pos2)
+          pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
+        } yield {
+          pl3
         }
-    }
-  }
-
-  def isDraw(b: Board): Boolean = {
-    allPositions.traverse(b.get).isDefined
-  }
-
-  def winner(b: Board): Option[Player] = {
-    def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
-      for {
-        pl1 <- b.get(pos1)
-        pl2 <- b.get(pos2)
-        pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
-      } yield {
-        pl3
       }
+      def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
+        cs match {
+          case Nil => None
+          case h::t =>
+            comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
+        }
+      combosWinner(winningCombos)
     }
-    def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
-      cs match {
-        case Nil => None
-        case h::t =>
-          comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
-      }
-    combosWinner(winningCombos)
+
   }
 
 }

@@ -166,23 +166,21 @@ object Final extends App {
      *       (or, if it is, we'll return that GameEnded)
      */
 
-    def forceTakeAndCheck(pos: Position): F[Result] = {
+    def forceTakeAndCheck(pos: Position): F[Result] =
       for {
         _ <- forceTake(pos)
         ge <- gameEnded.map(_.getOrElse(Result.NextTurn))
       } yield {
         ge
       }
-    }
 
-    def takeSinceNotDone(pos: Position): F[Result] = {
+    def takeSinceNotDone(pos: Position): F[Result] =
       for {
         op <- info(pos) // op is an Option[Player]
         res <- op.fold(forceTakeAndCheck(pos))(p => (Result.AlreadyTaken(p) : Result).pure[F])
       } yield {
         res
       }
-    }
 
     for {
       ge <- gameEnded
