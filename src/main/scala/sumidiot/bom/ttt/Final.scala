@@ -82,7 +82,8 @@ object Final extends App {
 
   /**
    * We can generically check for a winner by running through all the
-   * winning combinations. This relies only on the `info` method of the `TicTacToe`.
+   * winning combinations. This relies only on the `info` method of the `TicTacToe`,
+   * adding also the Applicative constraint.
    */
   def winner[F[_] : TicTacToe : Applicative]: F[Option[Player]] = {
     
@@ -113,9 +114,9 @@ object Final extends App {
 
   /**
    * Given just the `info` method of a `TicTacToe` we can check if the game has ended and,
-   * if it has, who has won.
+   * if it has, who has won. Like winner, this relies on the extra `Applicative` contraint.
    */
-  def gameEnded[F[_] : TicTacToe : Monad]: F[Option[Result.GameEnded]] = {
+  def gameEnded[F[_] : TicTacToe : Applicative]: F[Option[Result.GameEnded]] = {
 
     /**
      * This method is implemented somewhat bottom-up. The final for-comprehension at the bottom
@@ -139,12 +140,10 @@ object Final extends App {
           }
       )
 
-    for {
-      op <- winner // op is Option[Player]
-      fa <- op.fold(drawResult)(p => Result.GameEnded(Some(p)).some.pure[F])
-    } yield {
-      fa
-    }
+    def result(op: Option[Player], or: Option[Result.GameEnded]): Option[Result.GameEnded] =
+      op.map(p => Result.GameEnded(Some(p))).orElse(or)
+
+    (winner, drawResult).mapN(result)
   }
   
   /**
