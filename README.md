@@ -45,3 +45,9 @@ the custom initial one. It's also fun to have written the Final version first, a
 you can copy over the implementation for Free, and simply change the type declarations to remove
 the generic `F` and replace it with `TicTacToe`.
 
+## [OO](src/main/scala/sumidiot/bom/ttt/OO.scala)
+
+I wanted to get a comparison to something maybe more "normal" looking, maybe more "object-oriented"
+and without all the `Monad` bits. Basically I copied over Final and then made it compile.
+I'd certainly expect more folks to have lower cognitive overhead reading this version than the Free
+or Final versions.
