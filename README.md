@@ -6,9 +6,7 @@ the cats library.
 
 The book implements `takeIfNotTaken` for its custom monads. We extend this with `runRandom`,
 which probably doesn't do really the right thing with `Random` as a monad, but it's a start.
-We're currently also in the process of implementing `winner` and `gameEnded`, because currently
-those implementations are only for the `State`-based monad, but they should really be for
-any monad implementation.
+We've also added in generic `winner` and `gameEnded` methods.
 
 The current `GameState` is somewhat insufficient, really there should be two classes of states,
 one with a 'next player' and one representing a 'done' game (with either draw or winner,
@@ -43,5 +41,7 @@ because mostly this is used to motivate the Free monad.
 ## [Free](src/main/scala/sumidiot/bom/ttt/TTTFree.scala)
 
 This object contains the `Free`-based implementation of the TicTacToe monad. It's much nicer than
-the custom initial one.
+the custom initial one. It's also fun to have written the Final version first, and then see that
+you can copy over the implementation for Free, and simply change the type declarations to remove
+the generic `F` and replace it with `TicTacToe`.
 
