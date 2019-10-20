@@ -159,6 +159,12 @@ object Final extends App {
     /**
      * This implementation reads sort of from the bottom up. The first def
      * is used in the next def, which is used in the final `for`-comprehension.
+     *
+     * Note that there are 3 types of Result that can be returned:
+     *   1. GameEnded, which we basically pass through from `gameEnded`
+     *   2. AlreadyTaken, if the position is already taken
+     *   3. NextTurn, if we successfully took the position and the game isn't over
+     *       (or, if it is, we'll return that GameEnded)
      */
 
     def forceTakeAndCheck(pos: Position): F[Result] = {
