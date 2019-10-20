@@ -18,6 +18,7 @@ object Final extends App {
   trait TicTacToe[F[_]] {
     def info(p: Position): F[Option[Player]]
     def take(p: Position): F[Result]
+    def forceTake(p: Position): F[Unit]
   }
 
   /**
@@ -31,6 +32,9 @@ object Final extends App {
 
     def take[F[_]](p: Position)(implicit ev: TicTacToe[F]): F[Result] =
       ev.take(p)
+
+    def forceTake[F[_]](p: Position)(implicit ev: TicTacToe[F]): F[Unit] =
+      ev.forceTake(p)
   }
 
   import TicTacToeSyntax._
@@ -99,12 +103,31 @@ object Final extends App {
         }
     )
 
-  /*
-  def tryToTake[F[_] : TicTacToe : Monad]: F[Result] =
+  def genTake[F[_] : TicTacToe : Monad](pos: Position): F[Result] =
     for {
-
+      ge <- gameEnded
+      res <- ge.fold(reallyTake(pos))(r => (r: Result).pure[F])
+    } yield {
+      res
     }
-  */
+
+  def reallyTake[F[_] : TicTacToe : Monad](pos: Position): F[Result] = {
+    for {
+      op <- info(pos) // op is an Option[Player]
+      res <- op.fold(seriouslyTake(pos))(p => (Result.AlreadyTaken(p) : Result).pure[F])
+    } yield {
+      res
+    }
+  }
+
+  def seriouslyTake[F[_] : TicTacToe : Monad](pos: Position): F[Result] = {
+    for {
+      _ <- forceTake(pos)
+      ge <- gameEnded.map(_.getOrElse(Result.NextTurn))
+    } yield {
+      ge
+    }
+  }
 
 
   object TicTacToe {
@@ -122,12 +145,6 @@ object Final extends App {
       }
 
       def take(pos: Position): State[GameState, Result] = {
-        /*
-        for {
-          ge <- gameEnded // ge is an Option[Result.GameEnded]
-          res <- ge.fold(tryToTake)(_.pure)
-        }
-        */
         State(game => {
           Common.gameEnded(game.b) match {
             case Some(ge) => (game, ge)
@@ -144,6 +161,15 @@ object Final extends App {
               }
           }
         })
+      }
+
+      def forceTake(pos: Position): State[GameState, Unit] = {
+        for {
+          game <- State.get[GameState]
+          nb = game.b + (pos -> game.p)
+          ng = GameState(Player.other(game.p), nb)
+          _ <- State.set(ng)
+        } yield { () }
       }
 
     }
