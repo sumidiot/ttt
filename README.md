@@ -58,3 +58,13 @@ Here's what I thought might be a minor variation on the OO implementation, using
 instead of inheritance. I found, however, that since the OO implementation sort of assumed a hidden
 state, the `OOTypeclass` version that didn't had a few additional changes.
 
+## The Laws of the Algebra
+
+Here we note, until we can encode in tests, some laws for the TicTacToe algebra.
+We assume the `turn`, `take`, and `info` methods. The notation below is a bit brief:
+1. info is idempotent
+2. turn is idempotent
+3. info then turn is "the same as" turn then info
+4. info(pos) is none && p = turn then gentake(pos) is NextTurn or GameEnded and info(pos) = p and p' = turn
+5. info(pos) is some then gentake(pos) is AlreadyTaken and info(pos) is same some and turn is unchanged
+6. win / draw states
