@@ -51,3 +51,10 @@ I wanted to get a comparison to something maybe more "normal" looking, maybe mor
 and without all the `Monad` bits. Basically I copied over Final and then made it compile.
 I'd certainly expect more folks to have lower cognitive overhead reading this version than the Free
 or Final versions.
+
+## [OOTypeclass](src/main/scala/sumidiot/bom/ttt/OOTypeclass.scala)
+
+Here's what I thought might be a minor variation on the OO implementation, using a typeclass
+instead of inheritance. I found, however, that since the OO implementation sort of assumed a hidden
+state, the `OOTypeclass` version that didn't had a few additional changes.
+

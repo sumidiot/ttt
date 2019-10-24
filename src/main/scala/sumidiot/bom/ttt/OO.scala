@@ -108,7 +108,7 @@ object OO extends App {
   }
   
   /**
-   * Again, copied from Final and changed to work)
+   * Again, copied from Final and changed to work
    */
   def genTake(ttt: TicTacToe)(pos: Position): Result = {
 
