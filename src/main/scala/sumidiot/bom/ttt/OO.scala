@@ -14,6 +14,7 @@ object OO extends App {
   trait TicTacToe {
     def info(p: Position): Option[Player]
     def take(p: Position): Unit
+    def turn(): Player
   }
 
   /**
@@ -26,6 +27,9 @@ object OO extends App {
 
     override def take(p: Position): Unit =
       gs = gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))
+
+    override def turn(): Player =
+      gs.p
 
   }
 

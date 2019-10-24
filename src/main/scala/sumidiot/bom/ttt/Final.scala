@@ -27,10 +27,14 @@ object Final extends App {
    *
    * In the real world, we'd probably set visibility restrictions on `forceTake`,
    * and require users to rely on `genTake` (and maybe rename it back to just `take`).
+   *
+   * Note that we have also added `turn`. We anticipate updating this to be Option[Player]
+   * in the near future, to account for games which have completed.
    */
   trait TicTacToe[F[_]] {
     def info(p: Position): F[Option[Player]]
     def forceTake(p: Position): F[Unit]
+    def turn(): F[Player]
   }
 
   /**
@@ -44,6 +48,9 @@ object Final extends App {
 
     def forceTake[F[_]](p: Position)(implicit ev: TicTacToe[F]): F[Unit] =
       ev.forceTake(p)
+
+    def turn[F[_]]()(implicit ev: TicTacToe[F]): F[Player] =
+      ev.turn()
   }
 
   import TicTacToeSyntax._
@@ -52,14 +59,13 @@ object Final extends App {
    * This was the method suggested as an exercise in the book. Note, here,
    * we rely on our `genTake`, instead of the original `take`.
    */
-  def takeIfNotTaken[F[_] : TicTacToe : Monad](p: Position): F[Option[Result]] = {
+  def takeIfNotTaken[F[_] : TicTacToe : Monad](p: Position): F[Option[Result]] =
     for {
       op <- info(p)
       or <- op.fold(genTake(p).map(_.some))(p => none.pure[F])
     } yield {
       or
     }
-  }
 
   /**
    * This method is roughly just recursive, taking a random step until that
@@ -197,22 +203,27 @@ object Final extends App {
      * This provides an implementation of SGS[_] as a TicTacToe.
      */
     implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
-      override def info(p: Position): State[GameState, Option[Player]] = {
+      override def info(p: Position): State[GameState, Option[Player]] =
         for {
           game <- State.get[GameState]
         } yield {
           game.b.get(p)
         }
-      }
 
-      override def forceTake(pos: Position): State[GameState, Unit] = {
+      override def forceTake(pos: Position): State[GameState, Unit] =
         for {
           game <- State.get[GameState]
           nb = game.b + (pos -> game.p)
           ng = GameState(Player.other(game.p), nb)
           _ <- State.set(ng)
         } yield { () }
-      }
+
+      override def turn(): State[GameState, Player] =
+        for {
+          game <- State.get[GameState]
+        } yield {
+          game.p
+        }
 
     }
   }

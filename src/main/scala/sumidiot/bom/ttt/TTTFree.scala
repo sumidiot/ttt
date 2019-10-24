@@ -21,6 +21,7 @@ object TTTFree extends App {
   sealed abstract class TicTacToeA[A]
   case class Info(p: Position) extends TicTacToeA[Option[Player]]
   case class Take(p: Position) extends TicTacToeA[Unit]
+  case object Turn extends TicTacToeA[Player]
 
   type TicTacToe[A] = Free[TicTacToeA, A]
 
@@ -30,14 +31,16 @@ object TTTFree extends App {
   def take(p: Position): TicTacToe[Unit] =
     liftF[TicTacToeA, Unit](Take(p))
 
-  def takeIfNotTaken(p: Position): TicTacToe[Option[Result]] = {
+  def turn(): TicTacToe[Player] =
+    liftF[TicTacToeA, Player](Turn)
+
+  def takeIfNotTaken(p: Position): TicTacToe[Option[Result]] =
     for {
       op <- info(p)
       or <- op.fold(genTake(p).map(_.some))(p => none.pure[TicTacToe])
     } yield {
       or
     }
-  }
 
   def runRandom(exceptions: Set[Position] = Set.empty): TicTacToe[Option[Player]] = {
     val rpos = randomPosition(exceptions)
@@ -179,27 +182,13 @@ object TTTFree extends App {
               ng = GameState(Player.other(game.p), nb)
               _ <- State.set(ng)
             } yield { () }
-
-            /*
-            // need to return a State[GameState, Result]
-            State.get[GameState].flatMap { gs =>
-              gameEnded(gs.b) match {
-                case Some(ge) => ge.asInstanceOf[Result].pure[SGS] // some hackiness here, SGS is invariant, GameState <: Result, but we need to actually make an SGS[Result]
-                case None =>
-                  gs.b.get(pos) match {
-                    case Some(p) => Result.AlreadyTaken(p).asInstanceOf[Result].pure[SGS]
-                    case None =>
-                      val nb = gs.b + (pos -> gs.p)
-                      val ng = GameState(Player.other(gs.p), nb)
-                      for {
-                        _ <- State.set(ng)
-                      } yield {
-                        gameEnded(nb).getOrElse(Result.NextTurn)
-                      }
-                  }
-              }
+          }
+          case Turn => {
+            for {
+              game <- State.get[GameState]
+            } yield {
+              game.p
             }
-            */
           }
         }
     }
