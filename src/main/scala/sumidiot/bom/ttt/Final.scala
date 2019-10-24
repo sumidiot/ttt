@@ -226,12 +226,60 @@ object Final extends App {
         }
 
     }
+
+    type SGSS[X] = State[String, X]
+    implicit case object SGSSIsTicTacToe extends TicTacToe[SGSS] {
+
+      val playerIndex = 0
+      def positionIndex(p: Position): Int =
+        p match {
+          case Position(BoardIndex.F, BoardIndex.F) => 1
+          case Position(BoardIndex.F, BoardIndex.S) => 2
+          case Position(BoardIndex.F, BoardIndex.T) => 3
+          case Position(BoardIndex.S, BoardIndex.F) => 4
+          case Position(BoardIndex.S, BoardIndex.S) => 5
+          case Position(BoardIndex.S, BoardIndex.T) => 6
+          case Position(BoardIndex.T, BoardIndex.F) => 7
+          case Position(BoardIndex.T, BoardIndex.S) => 8
+          case Position(BoardIndex.T, BoardIndex.T) => 9
+        }
+
+
+      override def info(p: Position): State[String, Option[Player]] =
+        for {
+          str <- State.get[String]
+        } yield {
+          if (str(positionIndex(p)) == '-') {
+            none
+          } else {
+            Player(str(positionIndex(p))).some
+          }
+        }
+
+      override def forceTake(pos: Position): State[String, Unit] =
+        for {
+          game <- State.get[String]
+          player <- turn()
+          pidx = positionIndex(pos)
+          nb = game.slice(1, pidx) + player + game.slice(pidx + 1, game.size)
+          ng = Player.other(player).toString + nb
+          _ <- State.set(ng)
+        } yield { () }
+
+      override def turn(): State[String, Player] =
+        for {
+          str <- State.get[String]
+        } yield {
+          Player(str(playerIndex))
+        }
+    }
   }
 
 
   /**
    * This is the 'main' of the 'App', just a quick demo
    */
-  println(runRandom().run(StartingGame).value)
+  println(runRandom[SGS]().run(StartingGame).value)
+  println(runRandom[TicTacToe.SGSS]().run("X---------").value)
 
 }

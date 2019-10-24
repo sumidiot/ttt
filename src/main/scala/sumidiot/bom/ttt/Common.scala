@@ -52,6 +52,16 @@ object Common {
         case X => O
         case O => X
       }
+
+    /**
+     * Really this should return an Option or something, but that's a different exercise
+     */
+    def apply(char: Char): Player =
+      char match {
+        case 'X' => X
+        case 'O' => O
+        case _   => ???
+      }
   }
 
   sealed trait Result
