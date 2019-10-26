@@ -5,6 +5,7 @@ import Common._
 import cats._
 import cats.implicits._
 import cats.data.State
+import cats.data.ReaderT
 
 
 /**
@@ -227,6 +228,35 @@ object Final extends App {
 
     }
 
+    type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
+    implicit case object RTPSGSIsTicTacToe extends TicTacToe[RTPSGS] {
+      override def info(p: Position): RTPSGS[Option[Player]] =
+        ReaderT[State[Board, ?], Player, Option[Player]]({
+          (_: Player) => // we don't need to know whose turn it is to inspect the board
+            for {
+              board <- State.get[Board]
+            } yield {
+              board.get(p)
+            }
+        })
+
+      override def forceTake(pos: Position): RTPSGS[Unit] =
+        ReaderT[State[Board, ?], Player, Unit]({
+          (player: Player) =>
+            for {
+              board <- State.get[Board]
+              nb = board + (pos -> player)
+              _ <- State.set(nb)
+            } yield { () } // this doesn't change the player in any way, does this work?
+        })
+
+      override def turn(): RTPSGS[Player] =
+        ReaderT[State[Board, ?], Player, Player]({
+          (player: Player) =>
+            State.pure(player)
+        })
+    }
+
     type SGSS[X] = State[String, X]
     implicit case object SGSSIsTicTacToe extends TicTacToe[SGSS] {
 
@@ -281,5 +311,21 @@ object Final extends App {
    */
   println(runRandom[SGS]().run(StartingGame).value)
   println(runRandom[TicTacToe.SGSS]().run("X---------").value)
+
+  /**
+   * This shows that the RTPSGS implementation isn't correct yet, as anticipated,
+   * because the player never "switches" to O.
+   */
+  println({
+    /**
+     * This is a fun line, with the both the reader and the state being run
+     */
+    val (b, op) = runRandom[TicTacToe.RTPSGS]().run(Player.X).run(Map.empty).value
+    for {
+      p <- op
+    } yield {
+      GameState(p, b)
+    }
+  })
 
 }
