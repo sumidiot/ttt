@@ -15,8 +15,22 @@ scalacOptions ++= Seq(
 
 libraryDependencies += "org.typelevel" %% "cats-core" % "1.4.0"
 libraryDependencies += "org.typelevel" %% "cats-free" % "1.4.0"
+libraryDependencies += "org.typelevel" %% "discipline-core" % "1.0.0"
+libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1" % "test"
+libraryDependencies ++= Seq(
+  "org.typelevel" %% "cats-laws" % "2.0.0" % Test,
+  "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.3" % Test
+)
+libraryDependencies +=
+  "org.typelevel" %% "discipline-core" % "1.0.0" % Test
+libraryDependencies ++= Seq(
+  "org.typelevel" %% "discipline-specs2" % "1.0.0" % Test
+)
+libraryDependencies ++= Seq("org.specs2" %% "specs2-core" % "4.6.0" % "test")
+libraryDependencies += "org.typelevel" %% "kittens" % "2.0.0"
+
+scalacOptions in Test ++= Seq("-Yrangepos")
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
 
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1" % "test"
 

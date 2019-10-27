@@ -228,6 +228,7 @@ object Final extends App {
 
     }
 
+    /**
     type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
     implicit case object RTPSGSIsTicTacToe extends TicTacToe[RTPSGS] {
       override def info(p: Position): RTPSGS[Option[Player]] =
@@ -303,6 +304,7 @@ object Final extends App {
           Player(str(playerIndex))
         }
     }
+    **/
   }
 
 
@@ -310,16 +312,16 @@ object Final extends App {
    * This is the 'main' of the 'App', just a quick demo
    */
   println(runRandom[SGS]().run(StartingGame).value)
-  println(runRandom[TicTacToe.SGSS]().run("X---------").value)
+//  println(runRandom[TicTacToe.SGSS]().run("X---------").value)
 
   /**
    * This shows that the RTPSGS implementation isn't correct yet, as anticipated,
    * because the player never "switches" to O.
    */
+
+  /**
   println({
-    /**
-     * This is a fun line, with the both the reader and the state being run
-     */
+    // This is a fun line, with the both the reader and the state being run
     val (b, op) = runRandom[TicTacToe.RTPSGS]().run(Player.X).run(Map.empty).value
     for {
       p <- op
@@ -327,5 +329,6 @@ object Final extends App {
       GameState(p, b)
     }
   })
+  */
 
 }
