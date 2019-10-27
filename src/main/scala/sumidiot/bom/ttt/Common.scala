@@ -96,6 +96,32 @@ object Common {
     |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
     """.stripMargin
   }
+
+  /**
+   * This method returns a list of plays which has no prefix subsequence which results
+   * in a winning board. The plays correspond to a normal, fair game, with X starting.
+   * The final state may be a filled board with no winner, a finished game with a winner,
+   * or an unfinished game with no winner.
+   */
+  def randomPlaySequence: List[(Position, Player)] = {
+    def nonsuperfluousPlays(ps: List[(Position, Player)]): List[(Position, Player)] = {
+      (ps.foldLeft((Nil, None): (List[(Position, Player)], Option[Player])) {
+        case (a@(nsp, Some(_)), (_, _)) => a
+        case ((nsp, None), (pos, pl)) => {
+          val nl = nsp ++ List((pos, pl))
+          val b = nl.toMap
+          val w = StateCheats.winner(b)
+          (nl, w)
+        }
+      })._1
+    }
+    val numPlays = scala.util.Random.nextInt() % (allPositions.size + 1)
+    val positions = scala.util.Random.shuffle(allPositions).take(numPlays)
+    val players = List.tabulate(numPlays)(i => if (i % 2 == 0) { Player.X } else { Player.O })
+    val allPlays = positions.zip(players)
+    nonsuperfluousPlays(allPlays)
+  }
+
   case class GameState(p: Player, b: Board) {
     override def toString(): String = {
       s"""
