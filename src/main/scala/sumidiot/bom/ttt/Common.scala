@@ -85,17 +85,22 @@ object Common {
    * What would a non-State-based implementation look like? Maybe a database, so IO?
    */
   type Board = Map[Position, Player]
+  def showBoard(b: Board): String = {
+    def bchar(r: BoardIndex, c: BoardIndex): String =
+      b.get(Position(r, c)).map(_.toString).getOrElse(".")
+    s"""
+    |  ${bchar(BoardIndex.F, BoardIndex.F)} | ${bchar(BoardIndex.F, BoardIndex.S)} | ${bchar(BoardIndex.F, BoardIndex.T)}
+    |  ---------
+    |  ${bchar(BoardIndex.S, BoardIndex.F)} | ${bchar(BoardIndex.S, BoardIndex.S)} | ${bchar(BoardIndex.S, BoardIndex.T)}
+    |  ---------
+    |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
+    """.stripMargin
+  }
   case class GameState(p: Player, b: Board) {
     override def toString(): String = {
-      def bchar(r: BoardIndex, c: BoardIndex): String =
-        b.get(Position(r, c)).map(_.toString).getOrElse(".")
       s"""
       |Player $p's turn, given:
-      |  ${bchar(BoardIndex.F, BoardIndex.F)} | ${bchar(BoardIndex.F, BoardIndex.S)} | ${bchar(BoardIndex.F, BoardIndex.T)}
-      |  ---------
-      |  ${bchar(BoardIndex.S, BoardIndex.F)} | ${bchar(BoardIndex.S, BoardIndex.S)} | ${bchar(BoardIndex.S, BoardIndex.T)}
-      |  ---------
-      |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
+      |${showBoard(b)}
       """.stripMargin
     }
   }
