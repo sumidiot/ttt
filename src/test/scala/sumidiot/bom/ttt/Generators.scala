@@ -17,4 +17,16 @@ object Generators {
   implicit val genGameBoard: Gen[Board] =
     genGamePlays.map(_.toMap)
 
+  implicit val genGameState: Gen[GameState] = {
+    genGamePlays.map(plays => {
+      if (plays.isEmpty) {
+        StartingGame
+      } else {
+        val np = Player.other(plays.last._2)
+        val b = plays.toMap
+        GameState(np, b)
+      }
+    })
+  }
+
 }

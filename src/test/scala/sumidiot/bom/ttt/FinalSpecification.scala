@@ -45,7 +45,6 @@ object FinalSpecification {
       override val ttt = instance
       override implicit val M: Monad[F] = ev
     }
-
 }
 
 trait FinalTests[F[_]] extends Laws {
@@ -68,9 +67,17 @@ object FinalTests {
 }
 
 class FinalSpecs extends AnyFunSuite with Discipline {
+  /**
+   * I think you'd generally compare two State[A, B] as the same if for all a in A
+   * when you .run a through the two State-s, the two .values are the same. Maybe I'm wrong
+   * about that interpretation, because I'm still getting used to State. Or, if I'm right,
+   * it seems like I've probably got my tests set up incorrectly - I'd imagine the property
+   * being based on generating an Arbitrary GameState, and then checking the property given
+   * the corresponding State.
+   */
   implicit val eqSQS: Eq[SGS[Boolean]] = new Eq[SGS[Boolean]] {
     def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
-      a === b
+      a.runA(StartingGame).value === b.runA(StartingGame).value
   }
   checkAll("final monad", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
 }
