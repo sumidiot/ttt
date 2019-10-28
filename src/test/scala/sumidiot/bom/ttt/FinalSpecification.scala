@@ -1,10 +1,12 @@
 package sumidiot.bom.ttt
 
-import org.specs2._
 import org.scalacheck._
 import Prop.forAll
 
+import org.scalatest.funsuite.AnyFunSuite
+
 import org.typelevel.discipline.Laws
+import org.typelevel.discipline.scalatest.Discipline
 import cats.kernel.laws._
 import cats.kernel.laws.discipline._
 import cats.{Eq, Monad}
@@ -58,10 +60,10 @@ object FinalTests {
     }
 }
 
-class FinalSpecs extends Specification with org.typelevel.discipline.specs2.Discipline {
-  checkAll("final monad", FinalTests(TicTacToe.SGSIsTicTacToe).algebra({
-    new Eq[SGS[Boolean]] {
-      def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
-        a === b
-    }}))
+class FinalSpecs extends AnyFunSuite with Discipline {
+  implicit val eqSQS: Eq[SGS[Boolean]] = new Eq[SGS[Boolean]] {
+    def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
+      a === b
+  }
+  checkAll("final monad", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
 }
