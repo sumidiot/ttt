@@ -34,7 +34,7 @@ trait FinalSpecification[F[_]] {
   def ttt: TicTacToe[F]
   implicit def M: Monad[F]
   
-  def infoIsIdempotent(pos: Position) =
+  def infoIsIdempotent(pos: Position): IsEq[F[Boolean]] =
     M.flatMap(ttt.info(pos))(op1 => M.map(ttt.info(pos))(op2 => op1 == op2)) <-> M.pure(true)
 
 }
@@ -79,5 +79,5 @@ class FinalSpecs extends AnyFunSuite with Discipline {
     def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
       List.fill(200)(genGameState.sample).flatten.forall(s => a.runA(s).value == b.runA(s).value)
   }
-  checkAll("final monad", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
+  checkAll("SGS is lawful TicTacToe", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
 }
