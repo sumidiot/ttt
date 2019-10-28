@@ -73,11 +73,11 @@ class FinalSpecs extends AnyFunSuite with Discipline {
    * about that interpretation, because I'm still getting used to State. Or, if I'm right,
    * it seems like I've probably got my tests set up incorrectly - I'd imagine the property
    * being based on generating an Arbitrary GameState, and then checking the property given
-   * the corresponding State.
+   * the corresponding State. But the generic Law can't be written to assume State...
    */
   implicit val eqSQS: Eq[SGS[Boolean]] = new Eq[SGS[Boolean]] {
     def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
-      a.runA(StartingGame).value === b.runA(StartingGame).value
+      List.fill(200)(genGameState.sample).flatten.forall(s => a.runA(s).value == b.runA(s).value)
   }
   checkAll("final monad", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
 }

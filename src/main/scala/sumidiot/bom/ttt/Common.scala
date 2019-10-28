@@ -104,6 +104,13 @@ object Common {
    * or an unfinished game with no winner.
    */
   def randomPlaySequence: List[(Position, Player)] = {
+    def potentiallySuperfluousPlays: List[(Position, Player)] = {
+      // Without abs, many values are negative, so .take produces empty list
+      val numPlays = math.abs(scala.util.Random.nextInt()) % (allPositions.size + 1)
+      val positions = scala.util.Random.shuffle(allPositions).take(numPlays)
+      val players = List.tabulate(numPlays)(i => if (i % 2 == 0) { Player.X } else { Player.O })
+      positions.zip(players)
+    }
     def nonsuperfluousPlays(ps: List[(Position, Player)]): List[(Position, Player)] = {
       (ps.foldLeft((Nil, None): (List[(Position, Player)], Option[Player])) {
         case (a@(nsp, Some(_)), (_, _)) => a
@@ -115,11 +122,7 @@ object Common {
         }
       })._1
     }
-    val numPlays = scala.util.Random.nextInt() % (allPositions.size + 1)
-    val positions = scala.util.Random.shuffle(allPositions).take(numPlays)
-    val players = List.tabulate(numPlays)(i => if (i % 2 == 0) { Player.X } else { Player.O })
-    val allPlays = positions.zip(players)
-    nonsuperfluousPlays(allPlays)
+    nonsuperfluousPlays(potentiallySuperfluousPlays)
   }
 
   case class GameState(p: Player, b: Board) {
