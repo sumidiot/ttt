@@ -21,6 +21,13 @@ import cats._
 
 /**
  * Following https://www.iteratorshq.com/blog/tagless-with-discipline-testing-scala-code-the-right-way/
+ * Also note:
+ *   https://www.freecodecamp.org/news/beyond-unit-tests-an-intro-to-property-and-law-testing-in-scala-dd6a15898a19/
+ *   https://www.freecodecamp.org/news/an-introduction-to-law-testing-in-scala-4243d72272f9/
+ *   http://chrisphelps.github.io/scala/2016/11/30/Cats-Law-Checking-With-Discipline/
+ *   http://eed3si9n.com/herding-cats/checking-laws-with-discipline.html
+ *   https://typelevel.org/cats/typeclasses/lawtesting.html
+ *   https://typelevel.org/blog/2013/11/17/discipline.html
  */
 trait FinalSpecification[F[_]] {
 
