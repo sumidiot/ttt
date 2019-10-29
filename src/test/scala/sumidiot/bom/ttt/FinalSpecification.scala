@@ -17,9 +17,11 @@ import sumidiot.bom.ttt.Common._
 import sumidiot.bom.ttt.Common.{Result => TTTResult}
 import sumidiot.bom.ttt.Generators._
 import sumidiot.bom.ttt.Final.TicTacToe
+import sumidiot.bom.ttt.Final.TicTacToeSyntax._
 import sumidiot.bom.ttt.Final.{genTake,gameEnded}
 
 import cats._
+import cats.syntax.all._
 
 /**
  * Following https://www.iteratorshq.com/blog/tagless-with-discipline-testing-scala-code-the-right-way/
@@ -31,85 +33,54 @@ import cats._
  *   https://typelevel.org/cats/typeclasses/lawtesting.html
  *   https://typelevel.org/blog/2013/11/17/discipline.html
  */
-trait FinalSpecification[F[_]] {
+abstract class FinalSpecification[F[_] : TicTacToe : Monad] {
 
-  def ttt: TicTacToe[F]
-  implicit def M: Monad[F]
-  
-  def infoIsIdempotent(pos: Position): IsEq[F[Boolean]] = {
-    M.flatMap(ttt.info(pos))(op1 => {
-      M.map(ttt.info(pos))(op2 => op1 == op2)
-    }) <-> M.pure(true)
-  }
+  def infoIsIdempotent(pos: Position): IsEq[F[Boolean]] = true.pure[F] <->
+    (for {
+      op1 <- info(pos)
+      op2 <- info(pos)
+    } yield {
+      op1 == op2
+    })
 
-  def infoThenGenTakeIsBehaved(pos: Position): IsEq[F[Boolean]] = {
-    implicit val ittt = ttt
-    M.flatMap(gameEnded)(maybeEnded => {
-      maybeEnded match {
-        case Some(_) => M.pure(true) // game's over, ignore everything (or should we test you can't take it?)
-        case None    =>
-          M.flatMap(ttt.info(pos))(oposPlayer => {
-            M.flatMap(ttt.turn)(curPlayer => {
-              oposPlayer match {
-                case Some(posPlayer) => {
-                  // if we call genTake then AlreadyTaken, and info(pos) is oposPlayer and turn is curPlayer
-                  M.flatMap(genTake(pos))(takeRes => {
-                    M.flatMap(ttt.info(pos))(oposPlayer2 => {
-                      M.map(ttt.turn)(curPlayer2 => {
-                        (curPlayer == curPlayer2) && (oposPlayer == oposPlayer2) && takeRes == TTTResult.AlreadyTaken(posPlayer)
-                      })
-                    })
-                  })
-                }
-                case None => {
-                  // if we call genTake then either NextTurn or GameEnded
-                  // if NextTurn then turn == Player.other(curPlayer) and info(pos) == Some(curPlayer)
-                  // if GameEnded then winner is not Player.other(curPlayer) (could be draw or win)
-                  //    EXCEPT the generated game could have already been won
-                  M.flatMap(genTake(pos))(takeRes => {
-                    takeRes match {
-                      case TTTResult.NextTurn => {
-                        M.flatMap(ttt.info(pos))(oposPlayer2 => {
-                          M.map(ttt.turn)(curPlayer2 => {
-                            /**
-                             * I added these println-s while debugging a failure.
-                             * Which somewhat makes me wonder how else I should set up these tests.
-                             *
-                             *  println("here")
-                             *  println(curPlayer)
-                             *  println(curPlayer2)
-                             *  println(oposPlayer2)
-                             */
-                            (curPlayer != curPlayer2) && oposPlayer2.map(_ == curPlayer).getOrElse(false)
-                          })
-                        })
-                      }
-                      case TTTResult.GameEnded(None) => {
-                        M.pure(true) // everything is awesome
-                      }
-                      case TTTResult.GameEnded(Some(winner)) => {
-                        M.pure(winner == curPlayer)
-                      }
-                      case _ => {
-                        // this shouldn't happen, so we want the test to fail
-                        M.pure(false)
-                      }
-                    }
-                  })
-                }
-              }
-            })
-          })
-      }
-    }) <-> M.pure(true)
-  }
+  /**
+   * In this test, we'd like to ensure that `genTake` causes the right things to happen.
+   * One thing we have to guard against is that the game could already be done - for now, we
+   * let the test just pass. Assuming the game isn't ended, we check info(pos) and turn first,
+   * to get the current state of the board at the position, and the current player's turn. Then
+   * we call genTake, and compare following calls to info and turn.
+   * There's several cases to worry about:
+   * 1. if the position is already taken, then genTake return AlreadyTaken, and both
+   *    info and turn return the same thing as before calling genTake
+   * 2. if the position is not already taken, then genTake is either
+   *    * GameEnded(None), meaning the game ended in a draw - ensure info(pos) is the original player
+   *    * GameEnded(Some) - ensure info(pos) is the original player, and the winner is that player
+   *    * NextTurn - ensure info(pos) is the original player and the new current player is not the
+   *      same as we started with
+   */
+  def infoThenGenTakeIsBehaved(pos: Position): IsEq[F[Boolean]] = true.pure[F] <->
+    (for {
+      maybeEnded <- gameEnded
+      originalPosPlayer <- info(pos)
+      currentPlayer <- turn
+      takeRes <- genTake(pos)
+      afterTurnPosPlayer <- info(pos)
+      afterTurnCurPlayer <- turn
+    } yield {
+      maybeEnded.nonEmpty ||
+        (originalPosPlayer.isDefined && takeRes == TTTResult.AlreadyTaken(originalPosPlayer.get) && currentPlayer == afterTurnCurPlayer && originalPosPlayer == afterTurnPosPlayer) ||
+        ((originalPosPlayer.isEmpty && afterTurnPosPlayer == Some(currentPlayer)) &&
+          (
+            (takeRes == TTTResult.GameEnded(None)) ||
+            (takeRes == TTTResult.GameEnded(Some(currentPlayer))) ||
+            (takeRes == TTTResult.NextTurn && afterTurnCurPlayer == Player.other(currentPlayer))
+            ))
+    })
 }
 
 object FinalSpecification {
-  def apply[F[_]](instance: TicTacToe[F])(implicit ev: Monad[F]) =
+  def apply[F[_] : TicTacToe : Monad]() =
     new FinalSpecification[F] {
-      override val ttt = instance
-      override implicit val M: Monad[F] = ev
     }
 }
 
@@ -127,9 +98,9 @@ trait FinalTests[F[_]] extends Laws {
 }
 
 object FinalTests {
-  def apply[F[_]](instance: TicTacToe[F])(implicit ev: Monad[F]) =
+  def apply[F[_] : TicTacToe : Monad]() =
     new FinalTests[F] {
-      override def laws = FinalSpecification(instance)
+      override def laws = FinalSpecification()
     }
 }
 
@@ -152,5 +123,5 @@ class FinalSpecs extends AnyFunSuite with Discipline {
         ans
       })
   }
-  checkAll("SGS is lawful TicTacToe", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
+  checkAll("SGS is lawful TicTacToe", FinalTests[SGS]().algebra)
 }
