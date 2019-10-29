@@ -36,6 +36,7 @@ object Final extends App {
     def info(p: Position): F[Option[Player]]
     def forceTake(p: Position): F[Unit]
     def turn(): F[Player]
+    def switchPlayer(): F[Unit]
   }
 
   /**
@@ -52,6 +53,9 @@ object Final extends App {
 
     def turn[F[_]]()(implicit ev: TicTacToe[F]): F[Player] =
       ev.turn()
+
+    def switchPlayer[F[_]]()(implicit ev: TicTacToe[F]): F[Unit] =
+      ev.switchPlayer()
   }
 
   import TicTacToeSyntax._
@@ -76,8 +80,15 @@ object Final extends App {
     val rpos = randomPosition(exceptions)
     def cont(r: Result): F[Option[Player]] =
       r match {
-        case Result.GameEnded(op) => op.pure[F]
-        case _                    => runRandom(exceptions + rpos)
+        case Result.GameEnded(op)   => op.pure[F]
+        case Result.NextTurn        =>
+          for {
+            //_ <- switchPlayer()
+            res <- runRandom(exceptions + rpos)
+          } yield {
+            res
+          }
+        case Result.AlreadyTaken(_) => runRandom(exceptions + rpos)
       }
     for {
       r <- genTake(rpos)
@@ -177,6 +188,7 @@ object Final extends App {
       for {
         _ <- forceTake(pos)
         ge <- gameEnded.map(_.getOrElse(Result.NextTurn))
+        _ <- switchPlayer()
       } yield {
         ge
       }
@@ -215,8 +227,7 @@ object Final extends App {
         for {
           game <- State.get[GameState]
           nb = game.b + (pos -> game.p)
-          ng = GameState(Player.other(game.p), nb)
-          _ <- State.set(ng)
+          _ <- State.set(game.copy(b = nb))
         } yield { () }
 
       override def turn(): State[GameState, Player] =
@@ -225,6 +236,12 @@ object Final extends App {
         } yield {
           game.p
         }
+
+      override def switchPlayer(): State[GameState, Unit] =
+        for {
+          game <- State.get[GameState]
+          _ <- State.set(game.copy(p = Player.other(game.p)))
+        } yield { () }
 
     }
 
@@ -255,6 +272,12 @@ object Final extends App {
         ReaderT[State[Board, ?], Player, Player]({
           (player: Player) =>
             State.pure(player)
+        })
+
+      override def switchPlayer(): RTPSGS[Unit] =
+        ReaderT[State[Board, ?], Player, Unit]({
+          (player: Player) =>
+            State.pure(())
         })
     }
 
@@ -293,7 +316,7 @@ object Final extends App {
           player <- turn()
           pidx = positionIndex(pos)
           nb = game.slice(1, pidx) + player + game.slice(pidx + 1, game.size)
-          ng = Player.other(player).toString + nb
+          ng = player.toString + nb
           _ <- State.set(ng)
         } yield { () }
 
@@ -303,6 +326,14 @@ object Final extends App {
         } yield {
           Player(str(playerIndex))
         }
+
+      override def switchPlayer(): State[String, Unit] =
+        for {
+          str <- State.get[String]
+          p <- turn() 
+          _ <- State.set(Player.other(p).toString + str.drop(1))
+        } yield { () }
+        
     }
     **/
   }

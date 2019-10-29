@@ -14,8 +14,10 @@ import org.scalacheck.Prop._
 
 
 import sumidiot.bom.ttt.Common._
+import sumidiot.bom.ttt.Common.{Result => TTTResult}
 import sumidiot.bom.ttt.Generators._
 import sumidiot.bom.ttt.Final.TicTacToe
+import sumidiot.bom.ttt.Final.{genTake,gameEnded}
 
 import cats._
 
@@ -34,9 +36,73 @@ trait FinalSpecification[F[_]] {
   def ttt: TicTacToe[F]
   implicit def M: Monad[F]
   
-  def infoIsIdempotent(pos: Position): IsEq[F[Boolean]] =
-    M.flatMap(ttt.info(pos))(op1 => M.map(ttt.info(pos))(op2 => op1 == op2)) <-> M.pure(true)
+  def infoIsIdempotent(pos: Position): IsEq[F[Boolean]] = {
+    M.flatMap(ttt.info(pos))(op1 => {
+      M.map(ttt.info(pos))(op2 => op1 == op2)
+    }) <-> M.pure(true)
+  }
 
+  def infoThenGenTakeIsBehaved(pos: Position): IsEq[F[Boolean]] = {
+    implicit val ittt = ttt
+    M.flatMap(gameEnded)(maybeEnded => {
+      maybeEnded match {
+        case Some(_) => M.pure(true) // game's over, ignore everything (or should we test you can't take it?)
+        case None    =>
+          M.flatMap(ttt.info(pos))(oposPlayer => {
+            M.flatMap(ttt.turn)(curPlayer => {
+              oposPlayer match {
+                case Some(posPlayer) => {
+                  // if we call genTake then AlreadyTaken, and info(pos) is oposPlayer and turn is curPlayer
+                  M.flatMap(genTake(pos))(takeRes => {
+                    M.flatMap(ttt.info(pos))(oposPlayer2 => {
+                      M.map(ttt.turn)(curPlayer2 => {
+                        (curPlayer == curPlayer2) && (oposPlayer == oposPlayer2) && takeRes == TTTResult.AlreadyTaken(posPlayer)
+                      })
+                    })
+                  })
+                }
+                case None => {
+                  // if we call genTake then either NextTurn or GameEnded
+                  // if NextTurn then turn == Player.other(curPlayer) and info(pos) == Some(curPlayer)
+                  // if GameEnded then winner is not Player.other(curPlayer) (could be draw or win)
+                  //    EXCEPT the generated game could have already been won
+                  M.flatMap(genTake(pos))(takeRes => {
+                    takeRes match {
+                      case TTTResult.NextTurn => {
+                        M.flatMap(ttt.info(pos))(oposPlayer2 => {
+                          M.map(ttt.turn)(curPlayer2 => {
+                            /**
+                             * I added these println-s while debugging a failure.
+                             * Which somewhat makes me wonder how else I should set up these tests.
+                             *
+                             *  println("here")
+                             *  println(curPlayer)
+                             *  println(curPlayer2)
+                             *  println(oposPlayer2)
+                             */
+                            (curPlayer != curPlayer2) && oposPlayer2.map(_ == curPlayer).getOrElse(false)
+                          })
+                        })
+                      }
+                      case TTTResult.GameEnded(None) => {
+                        M.pure(true) // everything is awesome
+                      }
+                      case TTTResult.GameEnded(Some(winner)) => {
+                        M.pure(winner == curPlayer)
+                      }
+                      case _ => {
+                        // this shouldn't happen, so we want the test to fail
+                        M.pure(false)
+                      }
+                    }
+                  })
+                }
+              }
+            })
+          })
+      }
+    }) <-> M.pure(true)
+  }
 }
 
 object FinalSpecification {
@@ -54,7 +120,8 @@ trait FinalTests[F[_]] extends Laws {
   def algebra(implicit eqFBool: Eq[F[Boolean]]) =
     new SimpleRuleSet(
       name = "TicTacToe",
-      "info is idempotent" -> forAll (laws.infoIsIdempotent _)
+      "info is idempotent" -> forAll (laws.infoIsIdempotent _),
+      "genTake is lawful"  -> forAll (laws.infoThenGenTakeIsBehaved _)
     )
 
 }
@@ -77,7 +144,13 @@ class FinalSpecs extends AnyFunSuite with Discipline {
    */
   implicit val eqSQS: Eq[SGS[Boolean]] = new Eq[SGS[Boolean]] {
     def eqv(a: SGS[Boolean], b: SGS[Boolean]): Boolean =
-      List.fill(200)(genGameState.sample).flatten.forall(s => a.runA(s).value == b.runA(s).value)
+      List.fill(200)(genGameState.sample).flatten.forall(s => {
+        val ans = a.runA(s).value == b.runA(s).value
+        if (!ans) {
+          println(s"Failed on:\n$s")
+        }
+        ans
+      })
   }
   checkAll("SGS is lawful TicTacToe", FinalTests(TicTacToe.SGSIsTicTacToe).algebra)
 }
