@@ -5,7 +5,13 @@ import Common._
 import cats._
 import cats.implicits._
 import cats.data.State
-import cats.data.ReaderT
+// import cats.data.ReaderT // used in commented-out implementation
+
+import cats.effect.LiftIO
+import cats.effect.IO
+//import cats.effect.Console
+import cats.effect.Console.io._
+//import cats.effect.Console.implicits._
 
 
 /**
@@ -56,6 +62,7 @@ object Final extends App {
 
     def switchPlayer[F[_]]()(implicit ev: TicTacToe[F]): F[Unit] =
       ev.switchPlayer()
+
   }
 
   import TicTacToeSyntax._
@@ -67,10 +74,14 @@ object Final extends App {
   def takeIfNotTaken[F[_] : TicTacToe : Monad](p: Position): F[Option[Result]] =
     for {
       op <- info(p)
-      or <- op.fold(genTake(p).map(_.some))(p => none.pure[F])
+      or <- op.fold(genTake(p).map(_.some))(pl => none.pure[F])
     } yield {
       or
     }
+
+
+  def board[F[_] : TicTacToe : Applicative]: F[Board] =
+    allPositions.traverse { p => info(p).map(op => p -> op) }.map(Board.apply)
 
   /**
    * This method is roughly just recursive, taking a random step until that
@@ -83,7 +94,7 @@ object Final extends App {
         case Result.GameEnded(op)   => op.pure[F]
         case Result.NextTurn        =>
           for {
-            //_ <- switchPlayer()
+            //_ <- switchPlayer() // i'm still sussing out where this belongs to be called
             res <- runRandom(exceptions + rpos)
           } yield {
             res
@@ -96,6 +107,47 @@ object Final extends App {
     } yield {
       res
     }
+  }
+
+  /**
+   * The goal with this method is to present sort of an interactive program for playing.
+   *
+   * Generally the idea is something like:
+   *   Present the current board
+   *   Prompt with: "Move for Player <P>? "
+   *   Ask for input, interpret as board position to take, try to take it, and iterate
+   * 
+   * When the game is done, prompt should be "Draw" or "Won by <P>" and not ask for input
+   */
+  def run1IO[F[_] : TicTacToe : Monad](implicit L: LiftIO[F]): F[Result] = {
+    def readUntilValid: F[Position] =
+      for {
+        l <- L.liftIO(readLn)
+        m <- Position(l).map(_.pure[F]).getOrElse(readUntilValid)
+      } yield {
+        m
+      }
+    for {
+      b <- board
+      _ <- L.liftIO(putStrLn(Board.show(b)))
+      p <- turn
+      _ <- L.liftIO(putStrLn(s"Move for $p? "))
+      m <- readUntilValid
+      r <- genTake(m)
+    } yield {
+      r
+    }
+  }
+
+  def runIO[F[_] : TicTacToe : Monad](implicit L: LiftIO[F]): F[Option[Player]] = {
+    def cont(r: Result) : F[Option[Player]] =
+      r match {
+        case Result.GameEnded(op)   => op.pure[F]
+        case Result.NextTurn        => runIO
+        case Result.AlreadyTaken(_) => runIO
+      }
+    // compare this 1-line with the for-comprehension in runRandom
+    run1IO.flatMap(cont)
   }
 
   /**
@@ -246,6 +298,15 @@ object Final extends App {
     }
 
     /**
+     * I'd be surprised if this is the "correct" thing to do, but it does seem to work
+     */
+    implicit def stateLiftIO: LiftIO[SGS] =
+      new LiftIO[SGS] {
+        override def liftIO[A](ioa: IO[A]): SGS[A] =
+          State.pure(ioa.unsafeRunSync())
+      }
+
+    /**
     type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
     implicit case object RTPSGSIsTicTacToe extends TicTacToe[RTPSGS] {
       override def info(p: Position): RTPSGS[Option[Player]] =
@@ -361,5 +422,8 @@ object Final extends App {
     }
   })
   */
+
+ import TicTacToe._
+ println(runIO.run(StartingGame).value)
 
 }

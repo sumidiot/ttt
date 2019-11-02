@@ -2,6 +2,7 @@ package sumidiot.bom.ttt
 
 import cats.data.State
 import cats.implicits._
+import scala.util.Try
 
 object Common {
   
@@ -12,6 +13,25 @@ object Common {
     final case object T extends BoardIndex
   }
   final case class Position(row: BoardIndex, col: BoardIndex)
+
+  object Position {
+
+    def apply(s: String): Option[Position] =
+      Try {
+        def idx(c: Char): BoardIndex =
+          c match {
+            case 'F' => BoardIndex.F
+            case 'S' => BoardIndex.S
+            case 'T' => BoardIndex.T
+            // partial function, deal with it
+          }
+        val r = s(0)
+        val c = s(1)
+        val R = idx(r)
+        val C = idx(c)
+        Position(R, C)
+      }.toOption
+  }
 
   val allPositions =
     List(
@@ -85,16 +105,23 @@ object Common {
    * What would a non-State-based implementation look like? Maybe a database, so IO?
    */
   type Board = Map[Position, Player]
-  def showBoard(b: Board): String = {
-    def bchar(r: BoardIndex, c: BoardIndex): String =
-      b.get(Position(r, c)).map(_.toString).getOrElse(".")
-    s"""
-    |  ${bchar(BoardIndex.F, BoardIndex.F)} | ${bchar(BoardIndex.F, BoardIndex.S)} | ${bchar(BoardIndex.F, BoardIndex.T)}
-    |  ---------
-    |  ${bchar(BoardIndex.S, BoardIndex.F)} | ${bchar(BoardIndex.S, BoardIndex.S)} | ${bchar(BoardIndex.S, BoardIndex.T)}
-    |  ---------
-    |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
-    """.stripMargin
+  object Board {
+
+    def show(b: Board): String = {
+      def bchar(r: BoardIndex, c: BoardIndex): String =
+        b.get(Position(r, c)).map(_.toString).getOrElse(".")
+      s"""
+      |  ${bchar(BoardIndex.F, BoardIndex.F)} | ${bchar(BoardIndex.F, BoardIndex.S)} | ${bchar(BoardIndex.F, BoardIndex.T)}
+      |  ---------
+      |  ${bchar(BoardIndex.S, BoardIndex.F)} | ${bchar(BoardIndex.S, BoardIndex.S)} | ${bchar(BoardIndex.S, BoardIndex.T)}
+      |  ---------
+      |  ${bchar(BoardIndex.T, BoardIndex.F)} | ${bchar(BoardIndex.T, BoardIndex.S)} | ${bchar(BoardIndex.T, BoardIndex.T)}
+      """.stripMargin
+    }
+
+    def apply(lpop: List[(Position, Option[Player])]): Board =
+      lpop.flatMap(pop => pop._2.map(p => pop._1 -> p)).toMap
+
   }
 
   /**
@@ -129,7 +156,7 @@ object Common {
     override def toString(): String = {
       s"""
       |Player $p's turn, given:
-      |${showBoard(b)}
+      |${Board.show(b)}
       """.stripMargin
     }
   }

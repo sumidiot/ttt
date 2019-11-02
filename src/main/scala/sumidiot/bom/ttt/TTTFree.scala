@@ -37,7 +37,7 @@ object TTTFree extends App {
   def takeIfNotTaken(p: Position): TicTacToe[Option[Result]] =
     for {
       op <- info(p)
-      or <- op.fold(genTake(p).map(_.some))(p => none.pure[TicTacToe])
+      or <- op.fold(genTake(p).map(_.some))(pl => none.pure[TicTacToe])
     } yield {
       or
     }
