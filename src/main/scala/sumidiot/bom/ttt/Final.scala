@@ -6,6 +6,8 @@ import cats._
 import cats.implicits._
 import cats.data.State
 // import cats.data.ReaderT // used in commented-out implementation
+import cats.data.StateT
+import cats.arrow.FunctionK.lift
 
 import cats.effect.LiftIO
 import cats.effect.IO
@@ -297,6 +299,37 @@ object Final extends App {
 
     }
 
+    type IOSGS[X] = StateT[IO, GameState, X]
+    /**
+     * This provides an implementation of IOSGS[_] as a TicTacToe. Note that mostly,
+     * through mapK, we re-use the SGS implementation. The only extension is, effectively,
+     * to log when things change.
+     */
+    implicit case object IOSGSIsTicTacToe extends TicTacToe[IOSGS] {
+
+      override def info(p: Position): StateT[IO, GameState, Option[Player]] =
+        SGSIsTicTacToe.info(p).mapK(lift(IO.eval))
+
+      override def forceTake(pos: Position): StateT[IO, GameState, Unit] =
+        for {
+          p  <- turn
+          op <- SGSIsTicTacToe.forceTake(pos).mapK(lift(IO.eval))
+          _  <- StateT.liftF(putStrLn(s"Player $p took $pos"))
+        } yield { op }
+
+      override def turn(): StateT[IO, GameState, Player] =
+        SGSIsTicTacToe.turn.mapK(lift(IO.eval))
+
+      override def switchPlayer(): StateT[IO, GameState, Unit] =
+        for {
+          _ <- SGSIsTicTacToe.switchPlayer.mapK(lift(IO.eval))
+          p <- turn
+          _ <- StateT.liftF(putStrLn(s"Switching player to $p"))
+        } yield { () }
+
+    }
+    
+
     /**
      * I'd be surprised if this is the "correct" thing to do, but it does seem to work
      */
@@ -424,6 +457,6 @@ object Final extends App {
   */
 
  import TicTacToe._
- println(runIO.run(StartingGame).value)
+ println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
 
 }
