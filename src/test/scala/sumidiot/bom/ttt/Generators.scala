@@ -11,13 +11,13 @@ object Generators {
 
   implicit val arbitraryPosition: Arbitrary[Position] = Arbitrary(oneOf(allPositions))
   
-  implicit val genGamePlays: Gen[List[(Position, Player)]] =
+  val genGamePlays: Gen[List[(Position, Player)]] =
     Gen.resultOf((u: Unit) => Common.randomPlaySequence)
 
-  implicit val genGameBoard: Gen[Board] =
+  val genGameBoard: Gen[Board] =
     genGamePlays.map(_.toMap)
 
-  implicit val genGameState: Gen[GameState] = {
+  val genGameState: Gen[GameState] =
     genGamePlays.map(plays => {
       if (plays.isEmpty) {
         StartingGame
@@ -27,6 +27,19 @@ object Generators {
         GameState(np, b)
       }
     })
-  }
+
+  /**
+   * To generate an "obvious" win, we pick a winningCombo that we assign to X,
+   * and then two random remaining positions that we assign to O.
+   */
+  val genObviousWin: Gen[Board] =
+    for {
+      xt <- oneOf(winningCombos)
+      xs = List(xt._1, xt._2, xt._3)
+      o1 = randomPosition(xs.toSet)
+      o2 = randomPosition((o1 :: xs).toSet)
+    } yield {
+      (xs.map(p => p -> Player.X) ++ List(o1, o2).map(p => p -> Player.O)).toMap
+    }
 
 }

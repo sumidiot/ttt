@@ -29,6 +29,7 @@ object OOSpecification extends Properties("OO") {
           ))
   }
 
-  property("infoThenGenTakeIsBehaved") = forAll(genGameState, Arbitrary.arbitrary[Position])  { infoThenGenTakeIsBehaved _ } 
+  property("infoThenGenTakeIsBehaved") =
+    forAll(genGameState, Arbitrary.arbitrary[Position])(infoThenGenTakeIsBehaved)
 
 }

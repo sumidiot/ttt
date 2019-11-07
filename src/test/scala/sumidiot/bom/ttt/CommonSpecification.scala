@@ -16,7 +16,7 @@ object CommonSpecification extends Properties("Common") {
   property("anyBoardIsReasonable") = forAll(genGameBoard) { (b: Board) => {
     val xPlays = b.values.filter(_ == Player.X).size
     val oPlays = b.values.filter(_ == Player.O).size
-    b.size <= allPositions.size && (xPlays - oPlays >= 0 && xPlays - oPlays <= 1)
+    xPlays - oPlays >= 0 && xPlays - oPlays <= 1
   }}
 
   property("randomPlayIsNonsuperfluous") = forAll(genGamePlays) { ps => {
@@ -25,6 +25,13 @@ object CommonSpecification extends Properties("Common") {
     } else {
       val sub = ps.take(scala.util.Random.nextInt % ps.size) // take proper sequences
       StateCheats.winner(sub.toMap).isEmpty
+    }
+  }}
+
+  property("obviousWinsAreWon") = forAll(genObviousWin) { (b: Board) => {
+    StateCheats.winner(b) match {
+      case Some(Player.X) => true
+      case _              => false
     }
   }}
 
