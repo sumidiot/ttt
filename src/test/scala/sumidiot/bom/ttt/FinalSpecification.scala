@@ -123,5 +123,12 @@ class FinalSpecs extends AnyFunSuite with Discipline {
         ans
       })
   }
+
+  /**
+   * This import actually has to be in this block, not the top of the file, because otherwise
+   * it's available as implicit evidence everywhere, conflicting with the implicit evidence
+   * that's getting passed around.
+   */
+  import sumidiot.bom.ttt.Final.Instances.SGS.SGSIsTicTacToe
   checkAll("SGS is lawful TicTacToe", FinalTests[SGS]().algebra)
 }

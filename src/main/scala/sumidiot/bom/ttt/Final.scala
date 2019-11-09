@@ -264,80 +264,90 @@ object Final extends App {
   }
 
 
-  object TicTacToe {
+  object Instances {
 
-    /**
-     * This provides an implementation of SGS[_] as a TicTacToe.
-     */
-    implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
-      override def info(p: Position): State[GameState, Option[Player]] =
-        for {
-          game <- State.get[GameState]
-        } yield {
-          game.b.get(p)
+    object SGS {
+
+      /**
+       * This provides an implementation of SGS[_] as a TicTacToe.
+       */
+      implicit case object SGSIsTicTacToe extends TicTacToe[SGS] {
+        override def info(p: Position): State[GameState, Option[Player]] =
+          for {
+            game <- State.get[GameState]
+          } yield {
+            game.b.get(p)
+          }
+
+        override def forceTake(pos: Position): State[GameState, Unit] =
+          for {
+            game <- State.get[GameState]
+            nb = game.b + (pos -> game.p)
+            _ <- State.set(game.copy(b = nb))
+          } yield { () }
+
+        override def turn(): State[GameState, Player] =
+          for {
+            game <- State.get[GameState]
+          } yield {
+            game.p
+          }
+
+        override def switchPlayer(): State[GameState, Unit] =
+          for {
+            game <- State.get[GameState]
+            _ <- State.set(game.copy(p = Player.other(game.p)))
+          } yield { () }
+
+      }
+    
+      /**
+       * I'd be surprised if this is the "correct" thing to do, but it does seem to work
+       */
+      implicit def stateLiftIO: LiftIO[SGS] =
+        new LiftIO[SGS] {
+          override def liftIO[A](ioa: IO[A]): SGS[A] =
+            State.pure(ioa.unsafeRunSync())
         }
-
-      override def forceTake(pos: Position): State[GameState, Unit] =
-        for {
-          game <- State.get[GameState]
-          nb = game.b + (pos -> game.p)
-          _ <- State.set(game.copy(b = nb))
-        } yield { () }
-
-      override def turn(): State[GameState, Player] =
-        for {
-          game <- State.get[GameState]
-        } yield {
-          game.p
-        }
-
-      override def switchPlayer(): State[GameState, Unit] =
-        for {
-          game <- State.get[GameState]
-          _ <- State.set(game.copy(p = Player.other(game.p)))
-        } yield { () }
 
     }
 
-    type IOSGS[X] = StateT[IO, GameState, X]
-    /**
-     * This provides an implementation of IOSGS[_] as a TicTacToe. Note that mostly,
-     * through mapK, we re-use the SGS implementation. The only extension is, effectively,
-     * to log when things change.
-     */
-    implicit case object IOSGSIsTicTacToe extends TicTacToe[IOSGS] {
 
-      override def info(p: Position): StateT[IO, GameState, Option[Player]] =
-        SGSIsTicTacToe.info(p).mapK(lift(IO.eval))
+    object IOSGS {
 
-      override def forceTake(pos: Position): StateT[IO, GameState, Unit] =
-        for {
-          p  <- turn
-          op <- SGSIsTicTacToe.forceTake(pos).mapK(lift(IO.eval))
-          _  <- StateT.liftF(putStrLn(s"Player $p took $pos"))
-        } yield { op }
+      type IOSGS[X] = StateT[IO, GameState, X]
 
-      override def turn(): StateT[IO, GameState, Player] =
-        SGSIsTicTacToe.turn.mapK(lift(IO.eval))
+      /**
+       * This provides an implementation of IOSGS[_] as a TicTacToe. Note that mostly,
+       * through mapK, we re-use the SGS implementation. The only extension is, effectively,
+       * to log when things change.
+       */
+      implicit case object IOSGSIsTicTacToe extends TicTacToe[IOSGS] {
 
-      override def switchPlayer(): StateT[IO, GameState, Unit] =
-        for {
-          _ <- SGSIsTicTacToe.switchPlayer.mapK(lift(IO.eval))
-          p <- turn
-          _ <- StateT.liftF(putStrLn(s"Switching player to $p"))
-        } yield { () }
+        override def info(p: Position): StateT[IO, GameState, Option[Player]] =
+          Instances.SGS.SGSIsTicTacToe.info(p).mapK(lift(IO.eval))
+
+        override def forceTake(pos: Position): StateT[IO, GameState, Unit] =
+          for {
+            p  <- turn
+            op <- Instances.SGS.SGSIsTicTacToe.forceTake(pos).mapK(lift(IO.eval))
+            _  <- StateT.liftF(putStrLn(s"Player $p took $pos"))
+          } yield { op }
+
+        override def turn(): StateT[IO, GameState, Player] =
+          Instances.SGS.SGSIsTicTacToe.turn.mapK(lift(IO.eval))
+
+        override def switchPlayer(): StateT[IO, GameState, Unit] =
+          for {
+            _ <- Instances.SGS.SGSIsTicTacToe.switchPlayer.mapK(lift(IO.eval))
+            p <- turn
+            _ <- StateT.liftF(putStrLn(s"Switching player to $p"))
+          } yield { () }
+
+      }
 
     }
     
-
-    /**
-     * I'd be surprised if this is the "correct" thing to do, but it does seem to work
-     */
-    implicit def stateLiftIO: LiftIO[SGS] =
-      new LiftIO[SGS] {
-        override def liftIO[A](ioa: IO[A]): SGS[A] =
-          State.pure(ioa.unsafeRunSync())
-      }
 
     /**
     type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
@@ -374,89 +384,45 @@ object Final extends App {
             State.pure(())
         })
     }
-
-    type SGSS[X] = State[String, X]
-    implicit case object SGSSIsTicTacToe extends TicTacToe[SGSS] {
-
-      val playerIndex = 0
-      def positionIndex(p: Position): Int =
-        p match {
-          case Position(BoardIndex.F, BoardIndex.F) => 1
-          case Position(BoardIndex.F, BoardIndex.S) => 2
-          case Position(BoardIndex.F, BoardIndex.T) => 3
-          case Position(BoardIndex.S, BoardIndex.F) => 4
-          case Position(BoardIndex.S, BoardIndex.S) => 5
-          case Position(BoardIndex.S, BoardIndex.T) => 6
-          case Position(BoardIndex.T, BoardIndex.F) => 7
-          case Position(BoardIndex.T, BoardIndex.S) => 8
-          case Position(BoardIndex.T, BoardIndex.T) => 9
-        }
-
-
-      override def info(p: Position): State[String, Option[Player]] =
-        for {
-          str <- State.get[String]
-        } yield {
-          if (str(positionIndex(p)) == '-') {
-            none
-          } else {
-            Player(str(positionIndex(p))).some
-          }
-        }
-
-      override def forceTake(pos: Position): State[String, Unit] =
-        for {
-          game <- State.get[String]
-          player <- turn()
-          pidx = positionIndex(pos)
-          nb = game.slice(1, pidx) + player + game.slice(pidx + 1, game.size)
-          ng = player.toString + nb
-          _ <- State.set(ng)
-        } yield { () }
-
-      override def turn(): State[String, Player] =
-        for {
-          str <- State.get[String]
-        } yield {
-          Player(str(playerIndex))
-        }
-
-      override def switchPlayer(): State[String, Unit] =
-        for {
-          str <- State.get[String]
-          p <- turn() 
-          _ <- State.set(Player.other(p).toString + str.drop(1))
-        } yield { () }
-        
-    }
     **/
+
   }
 
 
   /**
-   * This is the 'main' of the 'App', just a quick demo
+   * This is the 'main' of the 'App', just a quick demo. It's separated in blocks
+   * to limit the imports.
    */
-  println(runRandom[SGS]().run(StartingGame).value)
-//  println(runRandom[TicTacToe.SGSS]().run("X---------").value)
-
-  /**
-   * This shows that the RTPSGS implementation isn't correct yet, as anticipated,
-   * because the player never "switches" to O.
-   */
-
-  /**
-  println({
-    // This is a fun line, with the both the reader and the state being run
-    val (b, op) = runRandom[TicTacToe.RTPSGS]().run(Player.X).run(Map.empty).value
-    for {
-      p <- op
-    } yield {
-      GameState(p, b)
+  {
+    {
+      import Instances.SGS._
+      println(runRandom[SGS]().run(StartingGame).value)
     }
-  })
-  */
 
- import TicTacToe._
- println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
+    {
+      /**
+       * This shows that the RTPSGS implementation isn't correct yet, as anticipated,
+       * because the player never "switches" to O.
+       */
+
+      /**
+      println({
+        // This is a fun line, with the both the reader and the state being run
+        val (b, op) = runRandom[TicTacToe.RTPSGS]().run(Player.X).run(Map.empty).value
+        for {
+          p <- op
+        } yield {
+          GameState(p, b)
+        }
+      })
+      */
+    }
+
+    {
+      import Instances.IOSGS._
+      println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
+    }
+
+  }
 
 }
