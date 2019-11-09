@@ -3,6 +3,9 @@ package sumidiot.bom.ttt
 import Common._
 import cats.implicits._
 
+import scala.util.Try
+import scala.io.StdIn.readLine
+
 /**
  * This object aims to provide something non-Monad-y, that might be what more people
  * might be used to seeing, sort of object-oriented-y.
@@ -33,9 +36,34 @@ object OO extends App {
 
   }
 
+  /**
+   * This silly implementation asks the user to keep track of things. Note that if you
+   * runRandom on this, it'll ask, a lot of times, about the whole board, because it's
+   * always checking for winners and the game being done.
+   */
+  class InteractiveLawlessTicTacToe extends TicTacToe {
+
+    override def info(p: Position): Option[Player] =
+      Try({
+        Some(Player(readLine(s"Who owns $p? ")(0)))
+      }).getOrElse(None)
+
+    override def take(p: Position): Unit =
+      println(s"Please let the current player take $p")
+
+    override def turn(): Player =
+      Try({
+        Player(readLine("Who'se turn is it? ")(0))
+      }).getOrElse(Player.X)
+  }
+
 
   def takeIfNotTaken(ttt: TicTacToe)(p: Position): Option[Result] =
     ttt.info(p).fold(genTake(ttt)(p).some)(p => none)
+ 
+
+  def board(ttt: TicTacToe): Board =
+    allPositions.flatMap { p => ttt.info(p).map(op => p -> op) }.toMap
 
 
   def runRandom(ttt: TicTacToe)(exceptions: Set[Position] = Set.empty): Option[Player] = {
@@ -87,12 +115,12 @@ object OO extends App {
 
     /**
      * This one is kind entertaining, compared to the Final version. The traverse here
-     * actually pulls out the "all takene" notion that we're looking for.
+     * actually pulls out the "all taken" notion that we're looking for.
      */
     def isDraw: Boolean =
       allPositions
         .traverse(pos => ttt.info(pos)) // List[Option[Player]] traversed to Option[List[Player]]
-        .isDefined
+        .isDefined // .traverse().isDefined is the same as the built-in .forall(_.isDefined)
 
     def drawResult: Option[Result.GameEnded] =
       if (isDraw) {
