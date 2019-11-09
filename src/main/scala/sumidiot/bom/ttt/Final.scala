@@ -302,7 +302,8 @@ object Final extends App {
       }
     
       /**
-       * I'd be surprised if this is the "correct" thing to do, but it does seem to work
+       * I'd be surprised if this is the "correct" thing to do, but it does seem to work.
+       * This implicit is used if you use the runIO runner with SGS.
        */
       implicit def stateLiftIO: LiftIO[SGS] =
         new LiftIO[SGS] {
@@ -350,39 +351,44 @@ object Final extends App {
     
 
     /**
-    type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
-    implicit case object RTPSGSIsTicTacToe extends TicTacToe[RTPSGS] {
-      override def info(p: Position): RTPSGS[Option[Player]] =
-        ReaderT[State[Board, ?], Player, Option[Player]]({
-          (_: Player) => // we don't need to know whose turn it is to inspect the board
-            for {
-              board <- State.get[Board]
-            } yield {
-              board.get(p)
-            }
-        })
+    object RTPSGS {
 
-      override def forceTake(pos: Position): RTPSGS[Unit] =
-        ReaderT[State[Board, ?], Player, Unit]({
-          (player: Player) =>
-            for {
-              board <- State.get[Board]
-              nb = board + (pos -> player)
-              _ <- State.set(nb)
-            } yield { () } // this doesn't change the player in any way, does this work?
-        })
+      type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
 
-      override def turn(): RTPSGS[Player] =
-        ReaderT[State[Board, ?], Player, Player]({
-          (player: Player) =>
-            State.pure(player)
-        })
+      implicit case object RTPSGSIsTicTacToe extends TicTacToe[RTPSGS] {
+        override def info(p: Position): RTPSGS[Option[Player]] =
+          ReaderT[State[Board, ?], Player, Option[Player]]({
+            (_: Player) => // we don't need to know whose turn it is to inspect the board
+              for {
+                board <- State.get[Board]
+              } yield {
+                board.get(p)
+              }
+          })
 
-      override def switchPlayer(): RTPSGS[Unit] =
-        ReaderT[State[Board, ?], Player, Unit]({
-          (player: Player) =>
-            State.pure(())
-        })
+        override def forceTake(pos: Position): RTPSGS[Unit] =
+          ReaderT[State[Board, ?], Player, Unit]({
+            (player: Player) =>
+              for {
+                board <- State.get[Board]
+                nb = board + (pos -> player)
+                _ <- State.set(nb)
+              } yield { () } // this doesn't change the player in any way, does this work?
+          })
+
+        override def turn(): RTPSGS[Player] =
+          ReaderT[State[Board, ?], Player, Player]({
+            (player: Player) =>
+              State.pure(player)
+          })
+
+        override def switchPlayer(): RTPSGS[Unit] =
+          ReaderT[State[Board, ?], Player, Unit]({
+            (player: Player) =>
+              State.pure(())
+          })
+
+      }
     }
     **/
 
@@ -406,6 +412,7 @@ object Final extends App {
        */
 
       /**
+      import Instances.RTPSGS._
       println({
         // This is a fun line, with the both the reader and the state being run
         val (b, op) = runRandom[TicTacToe.RTPSGS]().run(Player.X).run(Map.empty).value
