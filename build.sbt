@@ -17,6 +17,8 @@ libraryDependencies ++= Seq(
   "org.typelevel" %% "cats-core" % "2.0.0",
   "org.typelevel" %% "cats-free" % "2.0.0",
   "dev.profunktor" %% "console4cats" % "0.8.0",
+  "org.tpolecat" %% "doobie-core" % "0.8.4",
+  "org.tpolecat" %% "doobie-h2" % "0.8.4",
   "org.scalacheck" %% "scalacheck" % "1.14.1" % Test,
   "org.typelevel" %% "cats-laws" % "2.0.0" % Test,
   "org.typelevel" %% "discipline-core" % "1.0.0" % Test,
