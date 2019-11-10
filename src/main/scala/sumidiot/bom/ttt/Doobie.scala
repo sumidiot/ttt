@@ -20,7 +20,7 @@ object Doobie {
   implicit val cs = IO.contextShift(ExecutionContexts.synchronous)
 
   // this block is copied from the h2 doobie example
-  val transactor: Resource[IO, H2Transactor[IO]] =
+  val h2transactor: Resource[IO, H2Transactor[IO]] =
     for {
       ce <- ExecutionContexts.fixedThreadPool[IO](2) // our connect EC
       be <- Blocker[IO]                              // our blocking EC
@@ -33,16 +33,13 @@ object Doobie {
             )
     } yield xa
 
-  def run[A](cio: ConnectionIO[A]): IO[A] =
+  def run[A, T <: Transactor[IO]](transactor: Resource[IO, T])(cio: ConnectionIO[A]): IO[A] =
     transactor.use { xa => cio.transact(xa) }
 
-  /**
-   * Hack to spin up the in-memory database
-   */
-  def initializeDB(): Unit = {
-    run(sql"""CREATE TABLE turn (ps VARCHAR)""".update.run).unsafeRunSync
-    run(sql"""CREATE TABLE bps (rs VARCHAR, cs VARCHAR, ps VARCHAR)""".update.run).unsafeRunSync
-    run(sql"""INSERT INTO turn (ps) VALUES ('X')""".update.run).unsafeRunSync
+  def initializeDB[T <: Transactor[IO]](transactor: Resource[IO, T]): Unit = {
+    run(transactor)(sql"""CREATE TABLE turn (ps VARCHAR)""".update.run).unsafeRunSync
+    run(transactor)(sql"""CREATE TABLE bps (rs VARCHAR, cs VARCHAR, ps VARCHAR)""".update.run).unsafeRunSync
+    run(transactor)(sql"""INSERT INTO turn (ps) VALUES ('X')""".update.run).unsafeRunSync
   }
 
   /**

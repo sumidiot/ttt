@@ -324,16 +324,16 @@ object Final extends App {
        */
       implicit case object doobieEnabledTicTacToe extends TicTacToe[IO] {
         override def info(p: Position): IO[Option[Player]] =
-          Doo.run(Doo.Queries.info(p))
+          Doo.run(Doo.h2transactor)(Doo.Queries.info(p))
 
         override def forceTake(pos: Position): IO[Unit] =
-          Doo.run(Doo.Queries.take(pos))
+          Doo.run(Doo.h2transactor)(Doo.Queries.take(pos))
         
         override def turn(): IO[Player] =
-          Doo.run(Doo.Queries.turn)
+          Doo.run(Doo.h2transactor)(Doo.Queries.turn)
 
         override def switchPlayer(): IO[Unit] =
-          Doo.run(Doo.Queries.switchPlayer)
+          Doo.run(Doo.h2transactor)(Doo.Queries.switchPlayer)
 
       }
     
@@ -437,7 +437,7 @@ object Final extends App {
       import Instances.Doobie._
       import sumidiot.bom.ttt.{Doobie => Doo}
       println("Beginning Doobie-based IO implementation")
-      Doo.initializeDB()
+      Doo.initializeDB(Doo.h2transactor)
       println("DB initialized, current Board:")
       board.map(b => println(Board.show(b))).unsafeRunSync
       println(runRandom[IO]().unsafeRunSync)
