@@ -37,6 +37,8 @@ object Doobie {
     transactor.use { xa => cio.transact(xa) }
 
   def initializeDB[T <: Transactor[IO]](transactor: Resource[IO, T]): Unit = {
+    run(transactor)(sql"""DROP TABLE turn IF EXISTS""".update.run).unsafeRunSync
+    run(transactor)(sql"""DROP TABLE bps IF EXISTS""".update.run).unsafeRunSync
     run(transactor)(sql"""CREATE TABLE turn (ps VARCHAR)""".update.run).unsafeRunSync
     run(transactor)(sql"""CREATE TABLE bps (rs VARCHAR, cs VARCHAR, ps VARCHAR)""".update.run).unsafeRunSync
     run(transactor)(sql"""INSERT INTO turn (ps) VALUES ('X')""".update.run).unsafeRunSync

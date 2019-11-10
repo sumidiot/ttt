@@ -315,6 +315,7 @@ object Final extends App {
     
     object Doobie {
 
+      import doobie._
       import sumidiot.bom.ttt.{Doobie => Doo}
 
       /**
@@ -322,7 +323,7 @@ object Final extends App {
        * with a database. Realistically, we should probably make this an instance of
        * ConnectionIO, and later transact it into IO.
        */
-      implicit case object doobieEnabledTicTacToe extends TicTacToe[IO] {
+      implicit case object DoobieIOTicTacToe extends TicTacToe[IO] {
         override def info(p: Position): IO[Option[Player]] =
           Doo.run(Doo.h2transactor)(Doo.Queries.info(p))
 
@@ -334,6 +335,21 @@ object Final extends App {
 
         override def switchPlayer(): IO[Unit] =
           Doo.run(Doo.h2transactor)(Doo.Queries.switchPlayer)
+
+      }
+
+      implicit case object DoobieConnectionIOTicTacToe extends TicTacToe[ConnectionIO] {
+        override def info(p: Position): ConnectionIO[Option[Player]] =
+          Doo.Queries.info(p)
+
+        override def forceTake(pos: Position): ConnectionIO[Unit] =
+          Doo.Queries.take(pos)
+        
+        override def turn(): ConnectionIO[Player] =
+          Doo.Queries.turn
+
+        override def switchPlayer(): ConnectionIO[Unit] =
+          Doo.Queries.switchPlayer
 
       }
     
@@ -434,7 +450,7 @@ object Final extends App {
     }
 
     {
-      import Instances.Doobie._
+      import Instances.Doobie.DoobieIOTicTacToe
       import sumidiot.bom.ttt.{Doobie => Doo}
       println("Beginning Doobie-based IO implementation")
       Doo.initializeDB(Doo.h2transactor)
@@ -443,6 +459,20 @@ object Final extends App {
       println(runRandom[IO]().unsafeRunSync)
       println("Board after running")
       board.map(b => println(Board.show(b))).unsafeRunSync
+      println("Leaving Doobie version")
+    }
+    
+    {
+      import Instances.Doobie.DoobieConnectionIOTicTacToe
+      import doobie._
+      import sumidiot.bom.ttt.{Doobie => Doo}
+      println("Beginning Doobie-based ConnectionIO implementation")
+      Doo.initializeDB(Doo.h2transactor)
+      println("DB initialized, current Board:")
+      Doo.run(Doo.h2transactor)(board(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO).map(b => println(Board.show(b)))).unsafeRunSync
+      println(Doo.run(Doo.h2transactor)(runRandom[ConnectionIO]()(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO)).unsafeRunSync)
+      println("Board after running")
+      Doo.run(Doo.h2transactor)(board(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO).map(b => println(Board.show(b)))).unsafeRunSync
       println("Leaving Doobie version")
     }
 
