@@ -315,53 +315,7 @@ object Final extends App {
     
     object Doobie {
 
-      /**
-       * This implementation demonstrates what might happen if you were using
-       * a database for persistence of state, instead of in-memory State. Of course,
-       * we're using in-memory h2 as an example here, but whatever, the principle holds.
-       */
-
-      import cats.effect._
-      import doobie._
-      import doobie.implicits._
-      import doobie.h2._
-      import doobie.util.ExecutionContexts
-
-      // We need a ContextShift[IO] before we can construct a Transactor[IO]. The passed ExecutionContext
-      // is where nonblocking operations will be executed. For testing here we're using a synchronous EC.
-      implicit val cs = IO.contextShift(ExecutionContexts.synchronous)
-      
-      val transactor: Resource[IO, H2Transactor[IO]] =
-	for {
-	  ce <- ExecutionContexts.fixedThreadPool[IO](32) // our connect EC
-	  be <- Blocker[IO]    // our blocking EC
-	  xa <- H2Transactor.newH2Transactor[IO](
-                  "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", // connect URL
-                  "sa",                                   // username
-                  "",                                     // password
-                  ce,                                     // await connection here
-                  be                                      // execute JDBC operations here
-                )
-	} yield xa
-
-      def run[A](cio: ConnectionIO[A]): IO[A] =
-        transactor.use { xa => cio.transact(xa) }
-
-      def initializeDB(): Unit = {
-        run(sql"""CREATE TABLE turn (ps VARCHAR)""".update.run).unsafeRunSync
-        run(sql"""CREATE TABLE bps (rs VARCHAR, cs VARCHAR, ps VARCHAR)""".update.run).unsafeRunSync
-        run(sql"""INSERT INTO turn (ps) VALUES ('X')""".update.run).unsafeRunSync
-      }
-
-      case class Turn(ps: String)
-      def player(t: Turn): Player =
-        Player(t.ps(0))
-      
-      case class BoardPositionState(rs: String, cs: String, ps: String)
-      def position(bps: BoardPositionState): Position =
-        Position(s"${bps.rs}${bps.cs}").get // sinner
-      def player(bps: BoardPositionState): Player =
-        Player(bps.ps(0))
+      import sumidiot.bom.ttt.{Doobie => Doo}
 
       /**
        * This provides an implementation of IO[_] as a TicTacToe, using doobie to interact
@@ -370,34 +324,16 @@ object Final extends App {
        */
       implicit case object doobieEnabledTicTacToe extends TicTacToe[IO] {
         override def info(p: Position): IO[Option[Player]] =
-          run(
-            sql"select rs, cs, ps from bps where rs = ${p.row.toString} and cs = ${p.col.toString}"
-              .query[BoardPositionState]  // Query0[BoardPositionState]
-              .option                     // ConnectionIO[Option[BoardPositionState]]
-              .map(_.map(player))         // ConnectionIO[Option[Player]]
-            )
+          Doo.run(Doo.Queries.info(p))
 
         override def forceTake(pos: Position): IO[Unit] =
-          for {
-            curPlayer <- turn
-            _ <- run(sql"delete from bps where rs = ${pos.row.toString} and cs = ${pos.col.toString}".update.run)
-            _ <- run(sql"insert into bps (rs, cs, ps) values (${pos.row.toString}, ${pos.col.toString}, ${curPlayer.toString})".update.run)
-          } yield { () }
-
+          Doo.run(Doo.Queries.take(pos))
+        
         override def turn(): IO[Player] =
-          run(
-            sql"select ps from turn"
-              .query[Turn]  // Query0[Turn]
-              .unique       // ConnectionIO[Turn]
-              .map(player)  // ConnectionIO[Player]
-            )
+          Doo.run(Doo.Queries.turn)
 
         override def switchPlayer(): IO[Unit] =
-          for {
-            curPlayer <- turn
-            nextPlayer = Player.other(curPlayer)
-            _ <- run(sql"update turn set ps = ${nextPlayer.toString}".update.run)
-          } yield { () }
+          Doo.run(Doo.Queries.switchPlayer)
 
       }
     
@@ -499,8 +435,9 @@ object Final extends App {
 
     {
       import Instances.Doobie._
+      import sumidiot.bom.ttt.{Doobie => Doo}
       println("Beginning Doobie-based IO implementation")
-      initializeDB()
+      Doo.initializeDB()
       println("DB initialized, current Board:")
       board.map(b => println(Board.show(b))).unsafeRunSync
       println(runRandom[IO]().unsafeRunSync)
