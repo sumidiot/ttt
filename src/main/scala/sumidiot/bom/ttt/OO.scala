@@ -68,10 +68,11 @@ object OO extends App {
     override def info(p: Position): Option[Player] =
       Doo.run(transactor)(Doo.Queries.info(p)).unsafeRunSync
 
-    override def take(p: Position): Unit = {
-      Doo.run(transactor)(Doo.Queries.take(p)).unsafeRunSync
-      Doo.run(transactor)(Doo.Queries.switchPlayer).unsafeRunSync
-    }
+    override def take(p: Position): Unit =
+      Doo.run(transactor)(for {
+        _ <- Doo.Queries.take(p)
+        _ <- Doo.Queries.switchPlayer
+      } yield { () }).unsafeRunSync
 
     override def turn(): Player =
       Doo.run(transactor)(Doo.Queries.turn).unsafeRunSync

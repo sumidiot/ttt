@@ -12,6 +12,10 @@ The current `GameState` is somewhat insufficient, really there should be two cla
 one with a 'next player' and one representing a 'done' game (with either draw or winner,
 and possibly, for completeness/verifiability, the winning combo).
 
+To get started with this codebase, begin in `Common` for the various types. Then, to follow
+roughly the order in which variants were added, follow the other sections below. There's also
+some [tests](src/test/scala/sumidiot/bom/ttt/), mostly to demonstrate using property-based tests.
+
 ## [Common](src/main/scala/sumidiot/bom/ttt/Common.scala)
 
 This object contains some helpers that are used across a few implementations. In particular,

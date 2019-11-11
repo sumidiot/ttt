@@ -5,18 +5,29 @@ import Gen._
 
 import sumidiot.bom.ttt.Common._
 
+/**
+ * Handful of generators for use in scalacheck property-based tests
+ *
+ * Note that Arbitrary instances are used when you call forAll without specifying a generator
+ * explicitly.
+ */
 object Generators {
 
   implicit val arbitraryPlayer: Arbitrary[Player] = Arbitrary(oneOf(Player.X, Player.O))
 
   implicit val arbitraryPosition: Arbitrary[Position] = Arbitrary(oneOf(allPositions))
-  
+ 
   val genGamePlays: Gen[List[(Position, Player)]] =
     Gen.resultOf((u: Unit) => Common.randomPlaySequence)
 
   val genGameBoard: Gen[Board] =
     genGamePlays.map(_.toMap)
 
+  /**
+   * To generator a game state, we first generate a list of moves, and then
+   * determine whose turn it is after that list of moves (i.e., whoever didn't have
+   * the final play in that list).
+   */
   val genGameState: Gen[GameState] =
     genGamePlays.map(plays => {
       if (plays.isEmpty) {

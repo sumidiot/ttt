@@ -4,16 +4,10 @@ import Common._
 
 import cats._
 import cats.implicits._
-import cats.data.State
-// import cats.data.ReaderT // used in commented-out implementation
-import cats.data.StateT
-import cats.arrow.FunctionK.lift
 
 import cats.effect.LiftIO
 import cats.effect.IO
-//import cats.effect.Console
 import cats.effect.Console.io._
-//import cats.effect.Console.implicits._
 
 
 /**
@@ -71,7 +65,8 @@ object Final extends App {
 
   /**
    * This was the method suggested as an exercise in the book. Note, here,
-   * we rely on our `genTake`, instead of the original `take`.
+   * we rely on our `genTake`, instead of the original `take`, because of our interpretation
+   * of `forceTake`.
    */
   def takeIfNotTaken[F[_] : TicTacToe : Monad](p: Position): F[Option[Result]] =
     for {
@@ -82,6 +77,10 @@ object Final extends App {
     }
 
 
+  /**
+   * Extract all taken position information from the TicTacToe to obtain a Board
+   * representation of the state
+   */
   def board[F[_] : TicTacToe : Applicative]: F[Board] =
     allPositions.traverse { p => info(p).map(op => p -> op) }.map(Board.apply)
 
@@ -223,7 +222,8 @@ object Final extends App {
    * if somebody can "force" the move. In particular, we must first check
    * if the game is already done, sort of as an initial guard. If the game
    * isn't done, we can check if the position is already taken. If it's not
-   * then we can forceTake, and then check the game state.
+   * then we can forceTake, and then check the game state to see if that turn
+   * caused the player to win.
    */
   def genTake[F[_] : TicTacToe : Monad](pos: Position): F[Result] = {
 
@@ -264,9 +264,16 @@ object Final extends App {
   }
 
 
+  /**
+   * This object contains a bunch of instances of the TicTacToe typeclass. All of them
+   * are for types which happen to be Monads, so we don't have to provide any new instances
+   * of that (or Applicative).
+   */
   object Instances {
 
     object SGS {
+
+      import cats.data.State
 
       /**
        * This provides an implementation of SGS[_] as a TicTacToe.
@@ -358,6 +365,9 @@ object Final extends App {
 
     object IOSGS {
 
+      import cats.data.StateT
+      import cats.arrow.FunctionK.lift
+
       type IOSGS[X] = StateT[IO, GameState, X]
 
       /**
@@ -393,7 +403,13 @@ object Final extends App {
     
 
     /**
+     * The Book suggests an implementation like this, but I can't figure out how you'd
+     * change the player between turns, so I've commented this out for now.
+     */
+    /**
     object RTPSGS {
+
+      import cats.data.ReaderT
 
       type RTPSGS[X] = ReaderT[State[Board, ?], Player, X]
 
@@ -535,10 +551,10 @@ object Final extends App {
        *
        * This block is commented out because it's annoying :)
        */
-      //import Instances.IOSGS._
-      //println("Starting IOSGS version")
-      //println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
-      //println("Leaving IOSGS version")
+      import Instances.IOSGS._
+      println("Starting IOSGS version")
+      println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
+      println("Leaving IOSGS version")
     }
 
   }

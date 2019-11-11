@@ -4,7 +4,17 @@ import cats.data.State
 import scala.util.Try
 
 /**
- * Some utilities for use across implementations, including the base types
+ * Some utilities for use across implementations, including the base types, which
+ * we summarize here:
+ *   * Position(row, col), where row and col are represented by a BoardIndex, one of
+ *     F, S, or T ("First", "Second", "Third")
+ *   * Player, one of X or Y
+ *   * Board, a Map[Position, Player]
+ *   * GameState(player, board), the current taken spots, along with whose turn it is
+ *   * Result, the result of trying to take a position. This is "already taken",
+ *     "ok, next player's turn", or "game is over" (which would be the result if the
+ *     game was over before you tried to take the spot, or if it wasn't, but your taking
+ *     the spot was successful and it caused you to win the game)
  */
 object Common {
   
@@ -48,14 +58,13 @@ object Common {
 
   /**
    * List all the available positions on the board, for convenience.
-   * Using cats.Semigroupal.product because we can, though writing out the 9 board positions
+   * Using cats.Semigroupal.mapN because we can, though writing out the 9 board positions
    * is easier and quicker.
    */
   val allPositions = {
-    import cats.Semigroupal
-    import cats.instances.list._
+    import cats.implicits._
     val indices = List(BoardIndex.F, BoardIndex.S, BoardIndex.T)
-    Semigroupal[List].product(indices, indices).map(Position.apply)
+    (indices, indices).mapN(Position.apply)
   }
  
   def randomPosition(exceptions: Set[Position]): Position =
