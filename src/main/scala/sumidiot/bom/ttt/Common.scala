@@ -1,21 +1,34 @@
 package sumidiot.bom.ttt
 
 import cats.data.State
-import cats.implicits._
 import scala.util.Try
 
+/**
+ * Some utilities for use across implementations, including the base types
+ */
 object Common {
   
+  /**
+   * How we refer to coordinates in the game board. Here we use the same names for
+   * the coordinates in rows or columns
+   */
   sealed trait BoardIndex
   object BoardIndex {
     final case object F extends BoardIndex
     final case object S extends BoardIndex
     final case object T extends BoardIndex
   }
+
+  /**
+   * A Position represents a location on the game board
+   */
   final case class Position(row: BoardIndex, col: BoardIndex)
 
   object Position {
+    def apply(p: (BoardIndex, BoardIndex)): Position =
+      Position(p._1, p._2)
 
+    // ugly hack utility for converting String to Position
     def apply(s: String): Option[Position] =
       Try {
         def idx(c: Char): BoardIndex =
@@ -33,18 +46,18 @@ object Common {
       }.toOption
   }
 
-  val allPositions =
-    List(
-      Position(BoardIndex.F, BoardIndex.F),
-      Position(BoardIndex.F, BoardIndex.S),
-      Position(BoardIndex.F, BoardIndex.T),
-      Position(BoardIndex.S, BoardIndex.F),
-      Position(BoardIndex.S, BoardIndex.S),
-      Position(BoardIndex.S, BoardIndex.T),
-      Position(BoardIndex.T, BoardIndex.F),
-      Position(BoardIndex.T, BoardIndex.S),
-      Position(BoardIndex.T, BoardIndex.T),
-    )
+  /**
+   * List all the available positions on the board, for convenience.
+   * Using cats.Semigroupal.product because we can, though writing out the 9 board positions
+   * is easier and quicker.
+   */
+  val allPositions = {
+    import cats.Semigroupal
+    import cats.instances.list._
+    val indices = List(BoardIndex.F, BoardIndex.S, BoardIndex.T)
+    Semigroupal[List].product(indices, indices).map(Position.apply)
+  }
+ 
   def randomPosition(exceptions: Set[Position]): Position =
     scala.util.Random.shuffle((allPositions.toSet -- exceptions).toList).head
 
@@ -84,6 +97,10 @@ object Common {
       }
   }
 
+  /**
+   * A "Result" is one of the types given by the "Book of Monads" setup for this exercise.
+   * It is the "Result" of trying to take a board position.
+   */
   sealed trait Result
   object Result {
     final case class AlreadyTaken(by: Player) extends Result
@@ -101,8 +118,6 @@ object Common {
    * you might imagine a TicTacToeState trait, with operations like info and take,
    * and then State[TTTS, _] is TicTacToe for any TTTS : TicTacToeState. That seems
    * duplicative, or maybe I've missed the mark with my SGS bits below.
-   *
-   * What would a non-State-based implementation look like? Maybe a database, so IO?
    */
   type Board = Map[Position, Player]
   object Board {
@@ -128,7 +143,7 @@ object Common {
    * This method returns a list of plays which has no prefix subsequence which results
    * in a winning board. The plays correspond to a normal, fair game, with X starting.
    * The final state may be a filled board with no winner, a finished game with a winner,
-   * or an unfinished game with no winner.
+   * or an unfinished game with no winner. An un-started game is possible.
    */
   def randomPlaySequence: List[(Position, Player)] = {
     def potentiallySuperfluousPlays: List[(Position, Player)] = {
@@ -161,17 +176,26 @@ object Common {
     }
   }
 
+  /**
+   * We allow X to be the default starting player
+   */
   val StartingGame = GameState(Player.X, Map.empty)
 
+  /**
+   * This sets up a State-based implementation
+   */
   type SGS[X] = State[GameState, X]
 
   /**
-   * This object some stores some simple methods which rely entirely on the State
+   * This object some stores some simple methods which rely entirely on the GameState
    * implementation for results. Note that all of them are abstracted up and out in
    * Final and Free.
    */
   object StateCheats {
 
+    /**
+     * A game has ended if there is a winner, or we're in a draw, with a full board
+     */
     def gameEnded(b: Board): Option[Result.GameEnded] = {
       winner(b) match {
         case w@Some(p) => Some(Result.GameEnded(w))
@@ -184,10 +208,24 @@ object Common {
       }
     }
 
-    def isDraw(b: Board): Boolean = {
-      allPositions.traverse(b.get).isDefined
-    }
+    /**
+     * We're in a draw if all positions are taken. Note that this doesn't check
+     * if there's a winner, so you shouldn't really use this method, you should use gameEnded.
+     */
+    def isDraw(b: Board): Boolean =
+      allPositions.forall(p => b.get(p).isDefined)
+      // allPositions.traverse(b.get).isDefined // <-- equivalent formulation, with cats.implicits._
 
+    /**
+     * This doesn't check that the board is in a state that is actually reachable by
+     * following the rules of the game. In particular, a board with Xs down one row,
+     * and Os down the other, is a reasonable object to make, even though it is unreachable
+     * in normal play (X goes first, so they would get to place their third piece, and thus
+     * win, before O got to place their third piece).
+     *
+     * The result of this is that, for poorly formed boards, the winner may not be entirely
+     * well-defined, and this method will return one of the two winners.
+     */
     def winner(b: Board): Option[Player] = {
       def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
         for {
