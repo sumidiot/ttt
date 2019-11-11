@@ -6,11 +6,17 @@ import cats.implicits._
 import scala.util.Try
 import scala.io.StdIn.readLine
 
+import sumidiot.bom.ttt.{Doobie => Doo}
+import doobie._
+import cats.effect._
+
 /**
  * This object aims to provide something non-Monad-y, that might be what more people
  * might be used to seeing, sort of object-oriented-y.
  *
  * We use, here, the "forceTake" interpretation of take. See Final for discussion.
+ * Note, also, that we don't use `switchPlayer` from Final, that's not entirely intentional,
+ * we're still sorting that out over in the Final implementations anyway.
  */
 object OO extends App {
 
@@ -55,6 +61,21 @@ object OO extends App {
       Try({
         Player(readLine("Who'se turn is it? ")(0))
       }).getOrElse(Player.X)
+  }
+
+  class DoobieTicTacToe[T <: Transactor[IO]](transactor: Resource[IO, T] = Doo.h2transactor) extends TicTacToe {
+
+    override def info(p: Position): Option[Player] =
+      Doo.run(transactor)(Doo.Queries.info(p)).unsafeRunSync
+
+    override def take(p: Position): Unit = {
+      Doo.run(transactor)(Doo.Queries.take(p)).unsafeRunSync
+      Doo.run(transactor)(Doo.Queries.switchPlayer).unsafeRunSync
+    }
+
+    override def turn(): Player =
+      Doo.run(transactor)(Doo.Queries.turn).unsafeRunSync
+
   }
 
 
@@ -154,10 +175,33 @@ object OO extends App {
 
 
   /**
-   * This is the `main` of the `App` that we are
+   * This is the `main` of the `App` that we are, split up into blocks for various versions,
+   * like the Final `main`
    */
-  val ttt = new EmbeddedVarTicTacToe()
-  val res = runRandom(ttt)()
-  println(ttt.gs)
-  println(res)
+  {
+    {
+      /**
+       * This version one is the version with an embedded var
+       */
+      println("Starting EmbeddedVarTicTacToe")
+      val ttt = new EmbeddedVarTicTacToe()
+      val res = runRandom(ttt)()
+      println(ttt.gs)
+      println(res)
+      println("Leaving EmbeddedVarTicTacToe")
+    }
+
+    {
+      /**
+       * This one uses the doobie version
+       */
+      println("Starting DoobieTicTacToe")
+      val ttt = new DoobieTicTacToe(Doobie.h2transactor)
+      Doo.initializeDB(Doobie.h2transactor)
+      val res = runRandom(ttt)()
+      println(Board.show(board(ttt)))
+      println(res)
+      println("Leaving DoobieTicTacToe")
+    }
+  }
 }
