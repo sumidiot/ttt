@@ -443,6 +443,9 @@ object Final extends App {
    */
   {
     {
+      /**
+       * In this first version, we just demonstrate the use of the basic SGS implementation.
+       */
       import Instances.SGS._
       println("State[GameState, _] based version ready for runRandom")
       println(runRandom[SGS]().run(StartingGame).value)
@@ -450,30 +453,58 @@ object Final extends App {
     }
 
     {
+      /**
+       * Basically the same as the last, but using the IOSGS implementation to show
+       * moves being made.
+       */
+      import Instances.IOSGS._
+      println("IOSGS based version ready for runRandom")
+      println(runRandom[IOSGS]().run(StartingGame).unsafeRunSync)
+      println("Leaving IOSGS version")
+    }
+
+    {
+      /**
+       * In this version, we use the Doobie-backed database, relying on the default
+       * h2transactor provided in the s.b.t.Doobie module.
+       *
+       * I've sprinkled date-logging in here because it seems like this IO-based
+       * version is notably slower than the ConnectionIO-based one below, and for a
+       * noob like me, a little surprising.
+       */
       import Instances.Doobie.DoobieIOTicTacToe
       import sumidiot.bom.ttt.{Doobie => Doo}
-      println("Beginning Doobie-based IO implementation")
+      import java.util.Date
+      println(s"${new Date()} -- Beginning Doobie-based IO implementation")
       Doo.initializeDB(Doo.h2transactor)
-      println("DB initialized, current Board:")
+      println(s"${new Date()} -- DB initialized, current Board:")
       board.map(b => println(Board.show(b))).unsafeRunSync
       println(runRandom[IO]().unsafeRunSync)
-      println("Board after running")
+      println(s"${new Date()} -- Board after running")
       board.map(b => println(Board.show(b))).unsafeRunSync
-      println("Leaving Doobie version")
+      println(s"${new Date()} -- Leaving Doobie version")
     }
     
     {
+      /**
+       * Here's another version, this time this is the block which knows the transactor,
+       * vs in the example above the defaults rely on the provided h2transactor.
+       *
+       * Some of the implicits are kinda ugly in here. Presumably there's a nice way to
+       * clean those up.
+       */
       import Instances.Doobie.DoobieConnectionIOTicTacToe
       import doobie._
       import sumidiot.bom.ttt.{Doobie => Doo}
-      println("Beginning Doobie-based ConnectionIO implementation")
+      import java.util.Date
+      println(s"${new Date()} -- Beginning Doobie-based ConnectionIO implementation")
       Doo.initializeDB(Doo.h2transactor)
-      println("DB initialized, current Board:")
+      println(s"${new Date()} -- DB initialized, current Board:")
       Doo.run(Doo.h2transactor)(board(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO).map(b => println(Board.show(b)))).unsafeRunSync
       println(Doo.run(Doo.h2transactor)(runRandom[ConnectionIO]()(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO)).unsafeRunSync)
-      println("Board after running")
+      println(s"${new Date()} -- Board after running")
       Doo.run(Doo.h2transactor)(board(DoobieConnectionIOTicTacToe, implicits.AsyncConnectionIO).map(b => println(Board.show(b)))).unsafeRunSync
-      println("Leaving Doobie version")
+      println(s"${new Date()} -- Leaving Doobie version")
     }
 
     {
@@ -498,9 +529,16 @@ object Final extends App {
 
     {
       /**
-      import Instances.IOSGS._
-      println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
-      */
+       * This version is very similar to SGS, but the IOSGS version does some logging
+       * as methods are called, and here we actually use the runIO variant, which
+       * differs from runRandom by asking the user for moves.
+       *
+       * This block is commented out because it's annoying :)
+       */
+      //import Instances.IOSGS._
+      //println("Starting IOSGS version")
+      //println(runIO[IOSGS].run(StartingGame).unsafeRunSync)
+      //println("Leaving IOSGS version")
     }
 
   }
