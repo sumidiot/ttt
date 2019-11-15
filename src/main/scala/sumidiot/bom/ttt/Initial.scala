@@ -10,6 +10,9 @@ import scala.annotation.tailrec
 
 
 /**
+ * This implementation uses "Initial Style". It is the least refined implementation in this
+ * repo, because it is quickly replaced by "Free".
+ *
  * Example usage:
  *
    import sumidiot.bom.ttt.Common._
@@ -250,7 +253,7 @@ object Initial {
       }
       case t@Take(pos, k) => { // k: Result => TicTacToe[A]
         State.get[GameState].flatMap { gs =>
-          StateCheats.gameEnded(gs.b) match {
+          BoardHelpers.gameEnded(gs.b) match {
             case Some(ge) => runGame(k(ge))
             case None =>
               gs.b.get(pos) match {
@@ -260,7 +263,7 @@ object Initial {
                   val ng = GameState(Player.other(gs.p), nb)
                   for {
                     _ <- State.set(ng)
-                    a <- runGame(k(StateCheats.gameEnded(nb).getOrElse(Result.NextTurn)))
+                    a <- runGame(k(BoardHelpers.gameEnded(nb).getOrElse(Result.NextTurn)))
                   } yield {
                     a
                   }

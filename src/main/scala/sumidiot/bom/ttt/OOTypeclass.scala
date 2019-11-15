@@ -7,14 +7,12 @@ import cats.implicits._
  * This is sort of a variant on the typeclass pattern, where the methods in the
  * typeclass expect to be given a T. This makes it maybe closer to the OO implementation,
  * where the Final typeclass looks different.
- *
- * Again, we use the `forceTake` understanding of `take`. See Final for discussion.
  */
 object OOTypeclass extends App {
 
   trait TicTacToe[T] {
     def info(t: T, p: Position): Option[Player]
-    def take(t: T, p: Position): T // this is sort of a major difference to the OO version
+    def forceTake(t: T, p: Position): T // this is sort of a major difference to the OO version
     def turn(t: T): Player
   }
 
@@ -25,7 +23,7 @@ object OOTypeclass extends App {
       override def info(gs: GameState, p: Position): Option[Player] =
         gs.b.get(p)
 
-      override def take(gs: GameState, p: Position): GameState =
+      override def forceTake(gs: GameState, p: Position): GameState =
         gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))
 
       override def turn(gs: GameState): Player =
@@ -38,8 +36,8 @@ object OOTypeclass extends App {
       def info(p: Position): Option[Player] =
         implicitly[TicTacToe[T]].info(t, p)
 
-      def take(p: Position): T =
-        implicitly[TicTacToe[T]].take(t, p)
+      def forceTake(p: Position): T =
+        implicitly[TicTacToe[T]].forceTake(t, p)
 
       def turn(): Player =
         implicitly[TicTacToe[T]].turn(t)
@@ -105,7 +103,7 @@ object OOTypeclass extends App {
 
     /**
      * This one is kind entertaining, compared to the Final version. The traverse here
-     * actually pulls out the "all takene" notion that we're looking for.
+     * actually pulls out the "all taken" notion that we're looking for.
      */
     def isDraw: Boolean =
       allPositions
@@ -131,7 +129,7 @@ object OOTypeclass extends App {
   def genTake[T: TicTacToe](ttt: T)(pos: Position): (T, Result) = {
 
     def forceTakeAndCheck: (T, Result) = {
-      val nt = ttt.take(pos)
+      val nt = ttt.forceTake(pos)
       (nt, gameEnded(nt).getOrElse(Result.NextTurn))
     }
 

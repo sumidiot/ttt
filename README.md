@@ -2,11 +2,37 @@
 
 This repo is an exploration in custom monads, specifically to represent the game of TicTacToe,
 following the "Book of Monads" descriptions in Chapter 13. Implementations are in scala, using
-the cats library.
+the cats library. The general setup of the book is to define a TicTacToe with methods
+* `info :: Position -> Option[Player]`
+* `take :: Position -> Result`
+where `Position`, `Player`, and `Result` are some types left as an exercise to the reader.
+Actually, the above leaves out the `TicTacToe` monadic "wrapper" of the result types, but that's
+because for this repo we sometimes have exactly the signatures above, as we compare the monad
+versions with more "OO"-style ones.
 
-The book implements `takeIfNotTaken` for its custom monads. We extend this with `runRandom`,
-which probably doesn't do really the right thing with `Random` as a monad, but it's a start.
-We've also added in generic `winner` and `gameEnded` methods.
+In the book, the suggested implementation is based on `ReaderT Player (StateT Board IO)`. In
+my original understanding and implementation, the monad was supposed to sort of know about the
+whole game state, not just the board state but also whose turn it is. As I worked my way through
+what's here, I came to realize that possibly this was not the original intention, that the
+`TicTacToe` monad proposed in the exercise was really for the _board_, and it was a separate
+concern to manage whose turn it is. I may return to implementing this sort of separation,
+but for now, all of my implementations aim for the broader goal of the `TicTacToe` knowing the
+board and player state.
+
+Additionally, in my playing with things, I came to desire that the `take` method of the monad
+be a "forceful" take, disregarding if a player already occupied the position. So in my
+abstractions, I have `forceTake` (which returns `Unit`), and then a separate `genTake` which
+returns the (monad-wrapped) `Result`. The point of this is was that I didn't want to leave it up
+to any specific implementations to have to worry about all the checks that should happen when you
+try to take a position (is the game already over? is the spot already taken? if you take the spot,
+does it cause you to win?).
+
+After the methods above, the book implements `takeIfNotTaken` based on those primitives.
+We extend this with `runRandom`, which probably doesn't do really the right thing with
+`Random` as a monad, but it's a start. We've also added in generic `winner` and `gameEnded` methods.
+These are duplicated by "simpler" methods in the `Common.BoardHelpers` (more on `Common` below),
+but the point is that without those "simpler" methods, we can still implement basically the same
+logic, even in custom monads.
 
 The current `GameState` is somewhat insufficient, really there should be two classes of states,
 one with a 'next player' and one representing a 'done' game (with either draw or winner,
@@ -66,9 +92,10 @@ state, the `OOTypeclass` version that didn't had a few additional changes.
 
 This "Record Of Functions" version is just a quick way to play with what I take to be what
 "record of functions" means, as a thing to do instead of making new typeclasses (e.g., in Haskell).
+It seems like a pretty nice version, honestly.
 
-## The Laws of the Algebra
+## Tests
 
 There's some property-based [tests](src/test/scala/sumidiot/bom/ttt/) set up, mostly as an excuse
-to play around with such things. The main thing it checks is that `take` is well-behaved for
+to play around with such things. The main thing it checks is that `genTake` is well-behaved for
 different implementations.

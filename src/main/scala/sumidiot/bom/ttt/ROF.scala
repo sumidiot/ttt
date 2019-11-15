@@ -4,17 +4,14 @@ import Common._
 import cats.implicits._
 
 /**
- * This is sort of a variant on the typeclass pattern, where the methods in the
- * typeclass expect to be given a T. This makes it maybe closer to the OO implementation,
- * where the Final typeclass looks different.
- *
- * Again, we use the `forceTake` understanding of `take`. See Final for discussion.
+ * This implementation takes the "Record of Functions" approach to avoid typeclasses and
+ * inheritance. It seems like a nice pattern.
  */
 object ROF extends App {
 
   case class TicTacToe(
     info: Position => Option[Player],
-    take: Position => TicTacToe,
+    forceTake: Position => TicTacToe,
     turn: () => Player
   )
   
@@ -83,7 +80,7 @@ object ROF extends App {
 
     /**
      * This one is kind entertaining, compared to the Final version. The traverse here
-     * actually pulls out the "all takene" notion that we're looking for.
+     * actually pulls out the "all taken" notion that we're looking for.
      */
     def isDraw: Boolean =
       allPositions
@@ -109,7 +106,7 @@ object ROF extends App {
   def genTake(ttt: TicTacToe)(pos: Position): (TicTacToe, Result) = {
 
     def forceTakeAndCheck: (TicTacToe, Result) = {
-      val nt = ttt.take(pos)
+      val nt = ttt.forceTake(pos)
       (nt, gameEnded(nt).getOrElse(Result.NextTurn))
     }
 

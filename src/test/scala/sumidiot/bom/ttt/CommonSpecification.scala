@@ -35,7 +35,7 @@ object CommonSpecification extends Properties("Common") {
    * with a winner, because otherwise the game should have ended before we got that far.
    */
   property("randomPlayIsNonsuperfluous") = forAll(genGamePlays) { ps => {
-    (0 until ps.size).forall(s => StateCheats.winner(ps.take(s).toMap).isEmpty)
+    (0 until ps.size).forall(s => BoardHelpers.winner(ps.take(s).toMap).isEmpty)
   }}
 
   /**
@@ -55,7 +55,7 @@ object CommonSpecification extends Properties("Common") {
    * that the `winner` method at leasts gets those right.
    */
   property("obviousWinsAreWon") = forAll(genObviousWin) { (b: Board) => {
-    StateCheats.winner(b) match {
+    BoardHelpers.winner(b) match {
       case Some(Player.X) => true
       case _              => false
     }

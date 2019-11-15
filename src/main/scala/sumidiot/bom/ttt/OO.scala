@@ -14,15 +14,14 @@ import cats.effect._
  * This object aims to provide something non-Monad-y, that might be what more people
  * might be used to seeing, sort of object-oriented-y.
  *
- * We use, here, the "forceTake" interpretation of take. See Final for discussion.
- * Note, also, that we don't use `switchPlayer` from Final, that's not entirely intentional,
+ * Note that we don't use `switchPlayer` from Final, that's not entirely intentional,
  * we're still sorting that out over in the Final implementations anyway.
  */
 object OO extends App {
 
   trait TicTacToe {
     def info(p: Position): Option[Player]
-    def take(p: Position): Unit
+    def forceTake(p: Position): Unit
     def turn(): Player
   }
 
@@ -34,7 +33,7 @@ object OO extends App {
     override def info(p: Position): Option[Player] =
       gs.b.get(p)
 
-    override def take(p: Position): Unit =
+    override def forceTake(p: Position): Unit =
       gs = gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))
 
     override def turn(): Player =
@@ -54,7 +53,7 @@ object OO extends App {
         Some(Player(readLine(s"Who owns $p? ")(0)))
       }).getOrElse(None)
 
-    override def take(p: Position): Unit =
+    override def forceTake(p: Position): Unit =
       println(s"Please let the current player take $p")
 
     override def turn(): Player =
@@ -68,7 +67,7 @@ object OO extends App {
     override def info(p: Position): Option[Player] =
       Doo.run(transactor)(Doo.Queries.info(p)).unsafeRunSync
 
-    override def take(p: Position): Unit =
+    override def forceTake(p: Position): Unit =
       Doo.run(transactor)(for {
         _ <- Doo.Queries.take(p)
         _ <- Doo.Queries.switchPlayer
@@ -101,7 +100,9 @@ object OO extends App {
 
   /**
    * This implementation was copied over from Final, and then made to work with
-   * as few changes as I was able to identify.
+   * as few changes as I was able to identify. Note that it looks exactly the same as the
+   * Common.BoardHelpers.winner method, because the `ttt.` indirection in the inner
+   * `comboWinner` helper.
    */
   def winner(ttt: TicTacToe): Option[Player] = {
     
@@ -163,7 +164,7 @@ object OO extends App {
   def genTake(ttt: TicTacToe)(pos: Position): Result = {
 
     def forceTakeAndCheck: Result = {
-      ttt.take(pos)
+      ttt.forceTake(pos)
       gameEnded(ttt).getOrElse(Result.NextTurn)
     }
 

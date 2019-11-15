@@ -108,7 +108,9 @@ object Common {
 
   /**
    * A "Result" is one of the types given by the "Book of Monads" setup for this exercise.
-   * It is the "Result" of trying to take a board position.
+   * It is the "Result" of trying to "take" a board position. In most of our implementations,
+   * this means the "genTake" method, where inner implementations are only required to
+   * implement a "forceTake" method. See the README for more.
    */
   sealed trait Result
   object Result {
@@ -168,7 +170,7 @@ object Common {
         case ((nsp, None), (pos, pl)) => {
           val nl = nsp ++ List((pos, pl))
           val b = nl.toMap
-          val w = StateCheats.winner(b)
+          val w = BoardHelpers.winner(b)
           (nl, w)
         }
       })._1
@@ -200,7 +202,7 @@ object Common {
    * implementation for results. Note that all of them are abstracted up and out in
    * Final and Free.
    */
-  object StateCheats {
+  object BoardHelpers {
 
     /**
      * A game has ended if there is a winner, or we're in a draw, with a full board
@@ -236,22 +238,21 @@ object Common {
      * well-defined, and this method will return one of the two winners.
      */
     def winner(b: Board): Option[Player] = {
-      def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] = {
+      def playerWins(op1: Option[Player], op2: Option[Player], op3: Option[Player]): Option[Player] =
         for {
-          pl1 <- b.get(pos1)
-          pl2 <- b.get(pos2)
-          pl3 <- b.get(pos3) if pl1 == pl2 && pl2 == pl3
+          pl1 <- op1
+          pl2 <- op2
+          pl3 <- op3 if pl1 == pl2 && pl2 == pl3
         } yield {
           pl3
         }
-      }
-      def combosWinner(cs: List[(Position, Position, Position)]): Option[Player] =
-        cs match {
-          case Nil => None
-          case h::t =>
-            comboWinner(h._1, h._2, h._3).orElse(combosWinner(t))
-        }
-      combosWinner(winningCombos)
+
+      def comboWinner(pos1: Position, pos2: Position, pos3: Position): Option[Player] =
+        playerWins(b.get(pos1), b.get(pos2), b.get(pos3))
+
+      winningCombos
+        .map(t => comboWinner(t._1, t._2, t._3))
+        .flatten.headOption
     }
 
   }
