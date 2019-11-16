@@ -21,13 +21,13 @@ object OOTypeclass extends App {
     implicit case object GameStateIsTicTacToe extends TicTacToe[GameState] {
 
       override def info(gs: GameState, p: Position): Option[Player] =
-        gs.b.get(p)
+        gs.board.get(p)
 
       override def forceTake(gs: GameState, p: Position): GameState =
-        gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))
+        gs.copy(player = Player.other(gs.player), board = gs.board + (p -> gs.player))
 
       override def turn(gs: GameState): Player =
-        gs.p
+        gs.player
 
     }
 

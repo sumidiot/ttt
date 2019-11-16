@@ -17,9 +17,9 @@ object ROF extends App {
   
   def embeddedVarTicTacToe(gs: GameState = StartingGame): TicTacToe =
     TicTacToe(
-      gs.b.get,
-      p => embeddedVarTicTacToe(gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))),
-      gs.p _
+      gs.board.get,
+      p => embeddedVarTicTacToe(gs.copy(player = Player.other(gs.player), board = gs.board + (p -> gs.player))),
+      gs.player _
     )
 
   

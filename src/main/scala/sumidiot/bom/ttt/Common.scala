@@ -178,11 +178,11 @@ object Common {
     nonsuperfluousPlays(potentiallySuperfluousPlays)
   }
 
-  case class GameState(p: Player, b: Board) {
+  case class GameState(player: Player, board: Board) {
     override def toString(): String = {
       s"""
-      |Player $p's turn, given:
-      |${Board.show(b)}
+      |Player $player's turn, given:
+      |${Board.show(board)}
       """.stripMargin
     }
   }

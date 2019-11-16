@@ -31,13 +31,13 @@ object OO extends App {
   class EmbeddedVarTicTacToe(var gs: GameState = StartingGame) extends TicTacToe {
 
     override def info(p: Position): Option[Player] =
-      gs.b.get(p)
+      gs.board.get(p)
 
     override def forceTake(p: Position): Unit =
-      gs = gs.copy(p = Player.other(gs.p), b = gs.b + (p -> gs.p))
+      gs = gs.copy(player = Player.other(gs.player), board = gs.board + (p -> gs.player))
 
     override def turn(): Player =
-      gs.p
+      gs.player
 
   }
 

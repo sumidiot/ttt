@@ -243,24 +243,24 @@ object Initial {
     ttt match {
       case i@Info(p, k) => {
         // the for comprehension below is the same as this:
-        // State.get[GameState].flatMap(gs => runGame(k(gs.b.get(p))))
+        // State.get[GameState].flatMap(gs => runGame(k(gs.board.get(p))))
         for {
           gs <- State.get[GameState]
-          a <- runGame(k(gs.b.get(p)))
+          a <- runGame(k(gs.board.get(p)))
         } yield {
           a
         }
       }
       case t@Take(pos, k) => { // k: Result => TicTacToe[A]
         State.get[GameState].flatMap { gs =>
-          BoardHelpers.gameEnded(gs.b) match {
+          BoardHelpers.gameEnded(gs.board) match {
             case Some(ge) => runGame(k(ge))
             case None =>
-              gs.b.get(pos) match {
+              gs.board.get(pos) match {
                 case Some(p) => runGame(k(Result.AlreadyTaken(p)))
                 case None    =>
-                  val nb = gs.b + (pos -> gs.p)
-                  val ng = GameState(Player.other(gs.p), nb)
+                  val nb = gs.board + (pos -> gs.player)
+                  val ng = GameState(Player.other(gs.player), nb)
                   for {
                     _ <- State.set(ng)
                     a <- runGame(k(BoardHelpers.gameEnded(nb).getOrElse(Result.NextTurn)))

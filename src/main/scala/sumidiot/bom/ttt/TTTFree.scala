@@ -170,16 +170,16 @@ object TTTFree extends App {
           case Info(p) => {
             // A must be Option[Player]
             for {
-              gs <- State.get[GameState]
+              game <- State.get[GameState]
             } yield {
-              gs.b.get(p)
+              game.board.get(p)
             }
           }
           case Take(pos) => {
            for {
               game <- State.get[GameState]
-              nb = game.b + (pos -> game.p)
-              ng = GameState(Player.other(game.p), nb)
+              nb = game.board + (pos -> game.player)
+              ng = GameState(Player.other(game.player), nb)
               _ <- State.set(ng)
             } yield { () }
           }
@@ -187,7 +187,7 @@ object TTTFree extends App {
             for {
               game <- State.get[GameState]
             } yield {
-              game.p
+              game.player
             }
           }
         }

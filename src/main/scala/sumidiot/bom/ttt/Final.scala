@@ -283,27 +283,27 @@ object Final extends App {
           for {
             game <- State.get[GameState]
           } yield {
-            game.b.get(p)
+            game.board.get(p)
           }
 
         override def forceTake(pos: Position): State[GameState, Unit] =
           for {
             game <- State.get[GameState]
-            nb = game.b + (pos -> game.p)
-            _ <- State.set(game.copy(b = nb))
+            nb = game.board + (pos -> game.player)
+            _ <- State.set(game.copy(board = nb))
           } yield { () }
 
         override def turn(): State[GameState, Player] =
           for {
             game <- State.get[GameState]
           } yield {
-            game.p
+            game.player
           }
 
         override def switchPlayer(): State[GameState, Unit] =
           for {
             game <- State.get[GameState]
-            _ <- State.set(game.copy(p = Player.other(game.p)))
+            _ <- State.set(game.copy(player = Player.other(game.player)))
           } yield { () }
 
       }
