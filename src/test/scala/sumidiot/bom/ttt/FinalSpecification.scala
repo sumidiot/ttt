@@ -71,7 +71,7 @@ abstract class FinalSpecification[F[_] : TicTacToe : Monad] {
       ts.takeRes == TTTResult.GameEnded(Some(ts.currentPlayer))
     def nextTurnAndStateUpdates(ts: TestState) =
       ts.takeRes == TTTResult.NextTurn && ts.afterTurnCurPlayer == Player.other(ts.currentPlayer)
-    (for {
+    for {
       maybeEnded <- gameEnded
       originalPosPlayer <- info(pos)
       currentPlayer <- turn
@@ -84,7 +84,7 @@ abstract class FinalSpecification[F[_] : TicTacToe : Monad] {
       alreadyTakenDoneCorrectly(testState) ||
       (playerGetsPosition(testState) &&
         (gameEndsInDraw(testState) || playerGetsWin(testState) || nextTurnAndStateUpdates(testState)))
-    })
+    }
   }
 }
 
