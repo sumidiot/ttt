@@ -49,12 +49,7 @@ object TTTFree extends App {
         case Result.GameEnded(op) => op.pure[TicTacToe]
         case _                    => runRandom(exceptions + rpos)
       }
-    for {
-      r <- genTake(rpos)
-      res <- cont(r)
-    } yield {
-      res
-    }
+    genTake(rpos).flatMap(cont)
   }
 
   def winner: TicTacToe[Option[Player]] = {

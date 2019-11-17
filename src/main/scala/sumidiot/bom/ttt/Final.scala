@@ -93,21 +93,9 @@ object Final extends App {
     def cont(r: Result): F[Option[Player]] =
       r match {
         case Result.GameEnded(op)   => op.pure[F]
-        case Result.NextTurn        =>
-          for {
-            //_ <- switchPlayer() // i'm still sussing out where this belongs to be called
-            res <- runRandom(exceptions + rpos)
-          } yield {
-            res
-          }
-        case Result.AlreadyTaken(_) => runRandom(exceptions + rpos)
+        case _                      => runRandom(exceptions + rpos)
       }
-    for {
-      r <- genTake(rpos)
-      res <- cont(r)
-    } yield {
-      res
-    }
+    genTake(rpos).flatMap(cont)
   }
 
   /**
