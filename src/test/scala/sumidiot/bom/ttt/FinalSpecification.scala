@@ -1,15 +1,12 @@
 package sumidiot.bom.ttt
 
-import org.scalacheck._
-import Prop.forAll
-
 import org.scalatest.funsuite.AnyFunSuite
-
 import org.typelevel.discipline.Laws
 import org.typelevel.discipline.scalatest.Discipline
 import cats.kernel.laws._
 import cats.kernel.laws.discipline._
-import cats.{Eq, Monad}
+import cats._
+import cats.syntax.all._
 import org.scalacheck.Prop._
 
 
@@ -19,9 +16,6 @@ import sumidiot.bom.ttt.Generators._
 import sumidiot.bom.ttt.Final.TicTacToe
 import sumidiot.bom.ttt.Final.TicTacToeSyntax._
 import sumidiot.bom.ttt.Final.{genTake,gameEnded}
-
-import cats._
-import cats.syntax.all._
 
 /**
  * Following https://www.iteratorshq.com/blog/tagless-with-discipline-testing-scala-code-the-right-way/
@@ -58,7 +52,25 @@ abstract class FinalSpecification[F[_] : TicTacToe : Monad] {
    *    * NextTurn - ensure info(pos) is the original player and the new current player is not the
    *      same as we started with
    */
-  def infoThenGenTakeIsBehaved(pos: Position): IsEq[F[Boolean]] = true.pure[F] <->
+  def infoThenGenTakeIsBehaved(pos: Position): IsEq[F[Boolean]] = true.pure[F] <-> {
+    case class TestState(maybeEnded: Option[TTTResult],
+                         originalPosPlayer: Option[Player],
+                         currentPlayer: Player,
+                         takeRes: TTTResult,
+                         afterTurnPosPlayer: Option[Player],
+                         afterTurnCurPlayer: Player)
+    def gameIsAlreadyOver(ts: TestState) =
+      ts.maybeEnded.nonEmpty
+    def alreadyTakenDoneCorrectly(ts: TestState) =
+      ts.originalPosPlayer.isDefined && ts.takeRes == TTTResult.AlreadyTaken(ts.originalPosPlayer.get) && ts.currentPlayer == ts.afterTurnCurPlayer && ts.originalPosPlayer == ts.afterTurnPosPlayer
+    def playerGetsPosition(ts: TestState) =
+      ts.originalPosPlayer.isEmpty && ts.afterTurnPosPlayer == Some(ts.currentPlayer)
+    def gameEndsInDraw(ts: TestState) =
+      ts.takeRes == TTTResult.GameEnded(None)
+    def playerGetsWin(ts: TestState) =
+      ts.takeRes == TTTResult.GameEnded(Some(ts.currentPlayer))
+    def nextTurnAndStateUpdates(ts: TestState) =
+      ts.takeRes == TTTResult.NextTurn && ts.afterTurnCurPlayer == Player.other(ts.currentPlayer)
     (for {
       maybeEnded <- gameEnded
       originalPosPlayer <- info(pos)
@@ -66,16 +78,14 @@ abstract class FinalSpecification[F[_] : TicTacToe : Monad] {
       takeRes <- genTake(pos)
       afterTurnPosPlayer <- info(pos)
       afterTurnCurPlayer <- turn
+      testState = TestState(maybeEnded, originalPosPlayer, currentPlayer, takeRes, afterTurnPosPlayer, afterTurnCurPlayer)
     } yield {
-      maybeEnded.nonEmpty ||
-        (originalPosPlayer.isDefined && takeRes == TTTResult.AlreadyTaken(originalPosPlayer.get) && currentPlayer == afterTurnCurPlayer && originalPosPlayer == afterTurnPosPlayer) ||
-        ((originalPosPlayer.isEmpty && afterTurnPosPlayer == Some(currentPlayer)) &&
-          (
-            (takeRes == TTTResult.GameEnded(None)) ||
-            (takeRes == TTTResult.GameEnded(Some(currentPlayer))) ||
-            (takeRes == TTTResult.NextTurn && afterTurnCurPlayer == Player.other(currentPlayer))
-            ))
+      gameIsAlreadyOver(testState) ||
+      alreadyTakenDoneCorrectly(testState) ||
+      (playerGetsPosition(testState) &&
+        (gameEndsInDraw(testState) || playerGetsWin(testState) || nextTurnAndStateUpdates(testState)))
     })
+  }
 }
 
 object FinalSpecification {
